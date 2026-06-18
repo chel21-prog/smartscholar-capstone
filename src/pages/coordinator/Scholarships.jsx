@@ -159,6 +159,25 @@ const toggleStatus = async (scholarship) => {
     );
   }
 
+  const { data: reqs } = await supabase
+  .from("scholarship_requirements")
+  .select("*")
+  .eq("scholarship_id", scholarship.scholarship_id);
+
+if (reqs) {
+  setSelectedReq(
+    reqs.map((r) => ({
+      id:
+        r.application_requirement_id ||
+        r.eligibility_requirement_id,
+      type:
+        r.application_requirement_id
+          ? "app"
+          : "elig",
+    }))
+  );
+}
+
   setOpen(true);
 };
 
@@ -180,6 +199,25 @@ const updateScholarship = async () => {
   if (error) return alert(error.message);
   console.log("UPDATE SUCCESS:", editingId);
 
+  await supabase
+  .from("scholarship_requirements")
+  .delete()
+  .eq("scholarship_id", editingId);
+
+const reqPayload = selectedReq.map((r) => ({
+  scholarship_id: editingId,
+  application_requirement_id:
+    r.type === "app" ? r.id : null,
+  eligibility_requirement_id:
+    r.type === "elig" ? r.id : null,
+}));
+
+if (reqPayload.length) {
+  await supabase
+    .from("scholarship_requirements")
+    .insert(reqPayload);
+}
+
   // OPTIONAL: update form title + terms
   const { data: form } = await supabase
     .from("scholarship_application_forms")
@@ -196,6 +234,25 @@ const updateScholarship = async () => {
       })
       .eq("form_id", form.form_id);
   }
+
+  await supabase
+  .from("scholarship_form_fields")
+  .delete()
+  .eq("form_id", form.form_id);
+
+if (fields.length) {
+  const fieldPayload = fields.map((f) => ({
+    form_id: form.form_id,
+    label: f.label,
+    field_type: f.type,
+    is_required: f.required,
+  }));
+
+  await supabase
+    .from("scholarship_form_fields")
+    .insert(fieldPayload);
+}
+
   console.log("UPDATING ID:", editingId);
   reset();
   setOpen(false);
@@ -431,7 +488,7 @@ const viewForm = async (scholarshipId) => {
 {viewOpen && (
   <div style={overlay}>
     <div style={modal}>
-      <h2>Scholarship Requirements</h2>
+      <h2>{editMode ? "Edit Scholarship" : "Create Scholarship"}</h2>
 
       <h3>Application Requirements</h3>
       {viewRequirements.application.length === 0 ? (
@@ -529,9 +586,16 @@ const viewForm = async (scholarshipId) => {
             {appReq.map((r) => (
               <label key={r.application_requirement_id} style={checkItem}>
                 <input
-                  type="checkbox"
-                  onChange={() => toggleReq(r.application_requirement_id, "app")}
-                />
+  type="checkbox"
+  checked={selectedReq.some(
+    x =>
+      x.id === r.application_requirement_id &&
+      x.type === "app"
+  )}
+  onChange={() =>
+    toggleReq(r.application_requirement_id, "app")
+  }
+/>
                 {r.requirement_name}
               </label>
             ))}
@@ -540,9 +604,16 @@ const viewForm = async (scholarshipId) => {
             {eligReq.map((r) => (
               <label key={r.eligibility_requirement_id} style={checkItem}>
                 <input
-                  type="checkbox"
-                  onChange={() => toggleReq(r.eligibility_requirement_id, "elig")}
-                />
+  type="checkbox"
+  checked={selectedReq.some(
+    x =>
+      x.id === r.eligibility_requirement_id &&
+      x.type === "elig"
+  )}
+  onChange={() =>
+    toggleReq(r.eligibility_requirement_id, "elig")
+  }
+/>
                 {r.requirement_name}
               </label>
             ))}
@@ -603,7 +674,17 @@ const viewForm = async (scholarshipId) => {
             <button onClick={addField} style={smallBtn}>+ Add Field</button>
 
             <div style={actions}>
-              <button onClick={() => setOpen(false)}>Cancel</button>
+              <button
+  onClick={() => {
+    setOpen(false);
+    setEditMode(false);
+    setEditingId(null);
+    reset();
+  }}
+>
+  Cancel
+</button>
+
               <button
   onClick={
     editMode
