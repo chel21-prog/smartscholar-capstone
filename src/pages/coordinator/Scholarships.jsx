@@ -18,6 +18,15 @@ const [editingId, setEditingId] = useState(null);
   const [appReq, setAppReq] = useState([]);
   const [eligReq, setEligReq] = useState([]);
   const [selectedReq, setSelectedReq] = useState([]);
+  
+  const [newAppName, setNewAppName] = useState("");
+const [newAppType, setNewAppType] = useState("Document");
+
+const [newEligName, setNewEligName] = useState("");
+const [newEligType, setNewEligType] = useState("Other");
+
+const [showAppForm, setShowAppForm] = useState(false);
+const [showEligForm, setShowEligForm] = useState(false); 
 
   // FORM BUILDER
   const [formTitle, setFormTitle] = useState("");
@@ -106,6 +115,62 @@ const toggleStatus = async (scholarship) => {
       setSelectedReq([...selectedReq, { id, type }]);
     }
   };
+
+  const addApplicationRequirement = async () => {
+  if (!newAppName.trim()) return;
+
+  const { data, error } = await supabase
+    .from("application_requirements")
+    .insert({
+      requirement_name: newAppName,
+      requirement_type: newAppType,
+    })
+    .select()
+    .single();
+
+  if (error) return alert(error.message);
+
+  setAppReq([...appReq, data]);
+
+  setSelectedReq([
+    ...selectedReq,
+    {
+      id: data.application_requirement_id,
+      type: "app",
+    },
+  ]);
+
+  setNewAppName("");
+  setShowAppForm(false);
+};
+
+const addEligibilityRequirement = async () => {
+  if (!newEligName.trim()) return;
+
+  const { data, error } = await supabase
+    .from("eligibility_requirements")
+    .insert({
+      requirement_name: newEligName,
+      requirement_type: newEligType,
+    })
+    .select()
+    .single();
+
+  if (error) return alert(error.message);
+
+  setEligReq([...eligReq, data]);
+
+  setSelectedReq([
+    ...selectedReq,
+    {
+      id: data.eligibility_requirement_id,
+      type: "elig",
+    },
+  ]);
+
+  setNewEligName("");
+  setShowEligForm(false);
+};
 
   const addField = () => {
     if (!fieldLabel.trim()) return;
@@ -583,6 +648,44 @@ const viewForm = async (scholarshipId) => {
             <h3>Requirements Checklist</h3>
 
             <h4>Application</h4>
+
+            <button
+  type="button"
+  style={smallBtn}
+  onClick={() => setShowAppForm(!showAppForm)}
+>
+  + New Requirement
+</button>
+
+{showAppForm && (
+  <>
+    <input
+      placeholder="Requirement Name"
+      value={newAppName}
+      onChange={(e) => setNewAppName(e.target.value)}
+      style={input}
+    />
+
+    <select
+      value={newAppType}
+      onChange={(e) => setNewAppType(e.target.value)}
+      style={input}
+    >
+      <option>Document</option>
+      <option>Grade</option>
+      <option>Income</option>
+      <option>Other</option>
+    </select>
+
+    <button
+      type="button"
+      style={btn}
+      onClick={addApplicationRequirement}
+    >
+      Save Requirement
+    </button>
+  </>
+)}
             {appReq.map((r) => (
               <label key={r.application_requirement_id} style={checkItem}>
                 <input
@@ -601,6 +704,41 @@ const viewForm = async (scholarshipId) => {
             ))}
 
             <h4>Eligibility</h4>
+            <button
+  type="button"
+  style={smallBtn}
+  onClick={() => setShowEligForm(!showEligForm)}
+>
+  + New Requirement
+</button>
+
+{showEligForm && (
+  <>
+    <input
+      placeholder="Requirement Name"
+      value={newEligName}
+      onChange={(e) => setNewEligName(e.target.value)}
+      style={input}
+    />
+
+    <select
+      value={newEligType}
+      onChange={(e) => setNewEligType(e.target.value)}
+      style={input}
+    >
+      <option>Status</option>
+      <option>Other</option>
+    </select>
+
+    <button
+      type="button"
+      style={btn}
+      onClick={addEligibilityRequirement}
+    >
+      Save Requirement
+    </button>
+  </>
+)}
             {eligReq.map((r) => (
               <label key={r.eligibility_requirement_id} style={checkItem}>
                 <input
