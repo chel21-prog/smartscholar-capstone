@@ -83,7 +83,7 @@ export default function Signup() {
     }
 
     setLoading(false);
-    navigate("/login");
+    navigate("/Login");
   };
 
   return (
@@ -168,7 +168,7 @@ export default function Signup() {
 
           <div style={styles.signup}>
             <span>Already have an account?</span>
-            <Link to="/login" style={styles.signupLink}>
+            <Link to="/Login" style={styles.signupLink}>
               Login
             </Link>
           </div>
