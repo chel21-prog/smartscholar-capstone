@@ -57,12 +57,6 @@ export default function CashierDashboard() {
     <div style={styles.page}>
       <h1 style={styles.title}>Cashier Dashboard</h1>
 
-      {/* KPI CARDS */}
-      <div style={styles.kpiGrid}>
-        <div style={styles.card}>
-          <h3>Total Grantees</h3>
-          <p style={styles.number}>{totalGrantees}</p>
-        </div>
 
         <div style={styles.card}>
           <h3>Total Released Funds</h3>
