@@ -19,16 +19,17 @@ export default function CoordinatorDashboard() {
     const { data } = await supabase
       .from("scholarship_applications")
       .select(`
-        application_id,
-        status,
-        application_date,
-        students (
-          student_id
-        ),
-        scholarships (
-          scholarship_name
-        )
-      `)
+  application_id,
+  status,
+  application_date,
+  scholarship_id,
+  students (
+    student_id
+  ),
+  scholarships (
+    scholarship_name
+  )
+`)
       .order("application_date", { ascending: false });
 
     setApplications(data || []);
@@ -52,21 +53,39 @@ export default function CoordinatorDashboard() {
     setAnswers(data || []);
   };
 
-  // UPDATE STATUS
-  const updateStatus = async (id, status) => {
-    const { error } = await supabase
-      .from("scholarship_applications")
-      .update({ status })
-      .eq("application_id", id);
+  
+  const approveApplication = async (app) => {
+  // STEP 1: update status
+  const { error } = await supabase
+    .from("scholarship_applications")
+    .update({ status: "Approved" })
+    .eq("application_id", app.application_id);
 
-    if (error) return alert(error.message);
+  if (error) return alert(error.message);
 
-    setApplications((prev) =>
-      prev.map((a) =>
-        a.application_id === id ? { ...a, status } : a
-      )
-    );
-  };
+  // STEP 2: insert into grantees table
+  const { error: insertError } = await supabase
+    .from("grantees")
+    .insert({
+      student_id: app.students.student_id,
+      scholarship_id: app.scholarship_id,
+      application_id: app.application_id,
+      status: "Active", // optional
+    });
+
+  if (insertError) {
+    return alert(insertError.message);
+  }
+
+  // STEP 3: update UI
+  setApplications((prev) =>
+    prev.map((a) =>
+      a.application_id === app.application_id
+        ? { ...a, status: "Approved" }
+        : a
+    )
+  );
+};
 
   const filtered =
     filter === "All"
@@ -151,9 +170,7 @@ export default function CoordinatorDashboard() {
                     <>
                       <button
                         style={styles.btnGreen}
-                        onClick={() =>
-                          updateStatus(a.application_id, "Approved")
-                        }
+                        onClick={() => approveApplication(a)}
                       >
                         Approve
                       </button>
