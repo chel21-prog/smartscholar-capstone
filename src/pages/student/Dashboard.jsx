@@ -14,10 +14,12 @@ export default function Dashboard() {
   const [selectedScholarship, setSelectedScholarship] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [formMeta, setFormMeta] = useState(null);
+  const [academic, setAcademic] = useState(null);
 
   useEffect(() => {
-    load();
-  }, []);
+  load();
+  loadAcademic();
+}, []);
 
   const load = async () => {
     setLoading(true);
@@ -65,6 +67,7 @@ export default function Dashboard() {
       setScholarships(scholarshipsData || []);
       setRequirementsMap(reqMap || []);
       setStudentReq(studentData || []);
+
     } catch (err) {
       console.error(err);
     }
@@ -123,6 +126,17 @@ export default function Dashboard() {
   setShowForm(true); // 👈 IMPORTANT (open modal here)
 };
 
+const loadAcademic = async () => {
+  const { data } = await supabase
+    .from("academic_settings")
+    .select("*")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  setAcademic(data);
+};
+
   // MISSING REQUIREMENTS (FIXED)
   const getNotEligibleReasons = (scholarship) => {
   const required = requirementsMap.filter(
@@ -165,6 +179,8 @@ export default function Dashboard() {
       student_id: studentId,
       scholarship_id: selectedScholarship.scholarship_id,
       status: "Pending",
+      academic_year: academic?.academic_year,
+      semester: academic?.semester,
     })
     .select()
     .single();
@@ -326,6 +342,19 @@ export default function Dashboard() {
       <p style={{ fontSize: 12, color: "#555" }}>
         {formMeta?.terms_and_conditions}
       </p>
+
+      <div style={{ background: "#eef2ff", padding: 10, marginBottom: 10 }}>
+  <h4>Current Academic Period</h4>
+
+  <p>
+    <b>Academic Year:</b> {academic?.academic_year}
+  </p>
+
+  <p>
+    <b>Semester:</b> {academic?.semester}
+  </p>
+</div>
+
       {/* FORM FIELDS */}
       {formFields.map((field) => (
         <div key={field.field_id} style={{ marginBottom: 12 }}>

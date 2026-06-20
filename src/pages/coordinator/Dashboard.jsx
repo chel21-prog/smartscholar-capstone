@@ -6,12 +6,18 @@ export default function CoordinatorDashboard() {
   const [selectedApp, setSelectedApp] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [filter, setFilter] = useState("All");
+  const [academic, setAcademic] = useState(null);
+const [editMode, setEditMode] = useState(false);
+const [form, setForm] = useState({
+  academic_year: "",
+  semester: "",
+});
 
   useEffect(() => {
-    load();
-  }, []);
+  load();
+  loadAcademic();
+}, []);
 
   const load = async () => {
     setLoading(true);
@@ -35,6 +41,24 @@ export default function CoordinatorDashboard() {
     setApplications(data || []);
     setLoading(false);
   };
+
+  const loadAcademic = async () => {
+  const { data, error } = await supabase
+    .from("academic_settings")
+    .select("*")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!error && data) {
+    setAcademic(data);
+
+    setForm({
+      academic_year: data.academic_year,
+      semester: data.semester,
+    });
+  }
+};
 
   // VIEW ANSWERS
   const viewAnswers = async (app) => {
@@ -67,11 +91,14 @@ export default function CoordinatorDashboard() {
   const { error: insertError } = await supabase
     .from("grantees")
     .insert({
-      student_id: app.students.student_id,
-      scholarship_id: app.scholarship_id,
-      application_id: app.application_id,
-      status: "Active", // optional
-    });
+  student_id: app.students.student_id,
+  scholarship_id: app.scholarship_id,
+  application_id: app.application_id,
+  status: "Active",
+
+  academic_year: app.academic_year,
+  semester: app.semester,
+})
 
   if (insertError) {
     return alert(insertError.message);
@@ -87,6 +114,25 @@ export default function CoordinatorDashboard() {
   );
 };
 
+  const saveAcademic = async () => {
+  const { error } = await supabase
+    .from("academic_settings")
+    .update({
+      academic_year: form.academic_year,
+      semester: form.semester,
+      updated_at: new Date(),
+    })
+    .eq("id", academic.id); // MUST exist
+
+  if (error) return alert(error.message);
+
+  alert("Academic period updated!");
+
+  setEditMode(false);
+  loadAcademic();
+  console.log(academic);
+};
+
   const filtered =
     filter === "All"
       ? applications
@@ -97,6 +143,63 @@ export default function CoordinatorDashboard() {
   return (
     <div style={styles.page}>
       <h1 style={styles.title}>Coordinator Dashboard</h1>
+      {/* ACADEMIC CARD */}
+<div style={styles.academicCard}>
+  <h3>Academic Period</h3>
+
+  {!editMode ? (
+    <>
+      <p>
+        <b>AY:</b> {academic?.academic_year}
+      </p>
+      <p>
+        <b>Semester:</b> {academic?.semester}
+      </p>
+
+      <button
+        style={styles.btnBlue}
+        onClick={() => setEditMode(true)}
+      >
+        Edit
+      </button>
+    </>
+  ) : (
+    <>
+      <input
+        style={styles.input}
+        value={form.academic_year}
+        onChange={(e) =>
+          setForm({ ...form, academic_year: e.target.value })
+        }
+        placeholder="Academic Year"
+      />
+
+      <select
+        style={styles.input}
+        value={form.semester}
+        onChange={(e) =>
+          setForm({ ...form, semester: e.target.value })
+        }
+      >
+        <option>1st Semester</option>
+        <option>2nd Semester</option>
+      </select>
+
+      <div style={{ display: "flex", gap: 6 }}>
+        <button style={styles.btnGreen} onClick={saveAcademic}>
+          Save
+        </button>
+
+        <button
+          style={styles.btnRed}
+          onClick={() => setEditMode(false)}
+        >
+          Cancel
+        </button>
+      </div>
+    </>
+  )}
+</div>
 
       {/* FILTERS */}
       <div style={styles.filterRow}>
@@ -327,4 +430,12 @@ const styles = {
   loading: {
     padding: 20,
   },
+  academicCard: {
+  background: "#fff",
+  padding: 15,
+  borderRadius: 10,
+  marginBottom: 20,
+  width: "300px",
+  boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+},
 };
