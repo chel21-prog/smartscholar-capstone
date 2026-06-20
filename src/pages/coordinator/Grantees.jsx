@@ -15,25 +15,27 @@ export default function Grantees() {
   const { data, error } = await supabase
   .from("grantees")
   .select(`
-    grantee_id,
-    student_id,
-    scholarship_id,
-    status,
-    date_awarded,
-    academic_year,
-    semester,
-    students (
-      school_id,
-      users (
-        first_name,
-        last_name
-      )
-    ),
+  grantee_id,
+  student_id,
+  application_id,
+  scholarship_id,
+  status,
+  date_awarded,
+  academic_year,
+  semester,
     scholarships (
       scholarship_name
     )
   `)
   .order("date_awarded", { ascending: false });
+
+  const { data: docs, error: docsError } = await supabase
+  .from("application_documents")
+  .select("*");
+
+if (docsError) {
+  console.error("Docs error:", docsError.message);
+}
 
   if (error) {
     console.error(error.message);
@@ -41,16 +43,28 @@ export default function Grantees() {
     return;
   }
 
-  const formatted = data.map((g) => ({
-  grantee_id: g.grantee_id,
-  school_id: g.students?.school_id,
-  student_name: `${g.students?.users?.first_name || ""} ${g.students?.users?.last_name || ""}`,
-  scholarship_name: g.scholarships?.scholarship_name,
-  status: g.status,
-  academic_year: g.academic_year,
-  semester: g.semester,
-  date_awarded: g.date_awarded,
-}));
+  const formatted = data.map((g) => {
+
+  // 🔥 MATCH DOCUMENTS USING application_id
+  const granteeDocs =
+    docs?.filter(
+      (d) => d.application_id === g.application_id
+    ) || [];
+
+  return {
+    grantee_id: g.grantee_id,
+    school_id: g.students?.school_id,
+    student_name: `${g.students?.users?.first_name || ""} ${g.students?.users?.last_name || ""}`,
+    scholarship_name: g.scholarships?.scholarship_name,
+    status: g.status,
+    academic_year: g.academic_year,
+    semester: g.semester,
+    date_awarded: g.date_awarded,
+
+    // 🔥 THIS IS WHAT YOU WERE MISSING
+    documents: granteeDocs,
+  };
+});
   setRows(formatted);
   setLoading(false);
 };
@@ -92,7 +106,22 @@ export default function Grantees() {
 
                 {/* DOCUMENTS */}
                 <td style={styles.td}>
-  <span style={{ color: "#999" }}>Not available</span>
+  {!r.documents || r.documents.length === 0 ? (
+    <span style={{ color: "#999" }}>No files uploaded</span>
+  ) : (
+    r.documents.map((d, i) => (
+      <div key={i} style={{ marginBottom: 5 }}>
+        <a
+          href={d.file_url}
+          target="_blank"
+          rel="noreferrer"
+          style={styles.link}
+        >
+          {d.requirement_name || "View Document"}
+        </a>
+      </div>
+    ))
+  )}
 </td>
               </tr>
             ))}
