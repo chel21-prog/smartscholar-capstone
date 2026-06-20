@@ -112,22 +112,47 @@ const loadAcademicSettings = async () => {
   if (!selectedStudent) return alert("No student selected");
   if (!selectedScholarship) return alert("Select scholarship");
 
+  // 1. CREATE APPLICATION FIRST (THIS IS THE FIX)
+  const { data: application, error: appError } = await supabase
+    .from("scholarship_applications")
+    .insert({
+      student_id: selectedStudent.student_id,
+      scholarship_id: selectedScholarship,
+      status: "Approved",
+      academic_year: academicYear,
+      semester: semester,
+    })
+    .select()
+    .single();
+
+  if (appError) {
+    alert(appError.message);
+    return;
+  }
+
+  // 2. CREATE GRANTEE WITH APPLICATION ID
   const { error } = await supabase.from("grantees").insert({
     student_id: selectedStudent.student_id,
     scholarship_id: selectedScholarship,
-    academic_year: academicSettings?.academic_year,
-    semester: academicSettings?.semester,
-    date_awarded: new Date().toISOString().split("T")[0], // AUTO DATE
+    application_id: application.application_id, // ✅ IMPORTANT FIX
+    academic_year: academicYear,
+    semester: semester,
+    date_awarded: new Date().toISOString().split("T")[0], // ✅ auto date
     status: "Active",
   });
 
-  if (error) return alert(error.message);
+  if (error) {
+    alert(error.message);
+    return;
+  }
 
-  alert("Scholarship granted!");
+  alert("Scholarship granted successfully!");
 
-  // RESET
+  // RESET FORM
   setOpenGrant(false);
   setSelectedScholarship("");
+  setAcademicYear("");
+  setSemester("1st");
   setSelectedStudent(null);
 };
 

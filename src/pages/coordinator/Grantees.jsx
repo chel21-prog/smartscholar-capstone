@@ -10,59 +10,50 @@ export default function Grantees() {
   }, []);
 
   const load = async () => {
-    setLoading(true);
+  setLoading(true);
 
-    // 1. GET APPROVED APPLICATIONS + STUDENT + USER + SCHOLARSHIP
-    const { data: applications, error } = await supabase
-      .from("scholarship_applications")
-      .select(`
-        application_id,
-        status,
-        application_date,
-        students (
-          student_id,
-          school_id,
-          users (
-            first_name,
-            last_name
-          )
-        ),
-        scholarships (
-          scholarship_name
-        )
-      `)
-      .eq("status", "Approved");
+  const { data, error } = await supabase
+  .from("grantees")
+  .select(`
+    grantee_id,
+    student_id,
+    scholarship_id,
+    status,
+    date_awarded,
+    academic_year,
+    semester,
+    students (
+      school_id,
+      users (
+        first_name,
+        last_name
+      )
+    ),
+    scholarships (
+      scholarship_name
+    )
+  `)
+  .order("date_awarded", { ascending: false });
 
-    if (error) {
-      console.error(error.message);
-      setLoading(false);
-      return;
-    }
-
-    // 2. GET ALL DOCUMENTS
-    const { data: docs } = await supabase
-      .from("application_documents")
-      .select("*");
-
-    // 3. MERGE DATA
-    const merged = applications.map((app) => {
-      const studentDocs =
-        docs?.filter((d) => d.application_id === app.application_id) || [];
-
-      return {
-        application_id: app.application_id,
-        scholarship_name: app.scholarships?.scholarship_name,
-        school_id: app.students?.school_id,
-        student_name: `${app.students?.users?.first_name || ""} ${app.students?.users?.last_name || ""}`,
-        status: app.status,
-        application_date: app.application_date,
-        documents: studentDocs,
-      };
-    });
-
-    setRows(merged);
+  if (error) {
+    console.error(error.message);
     setLoading(false);
-  };
+    return;
+  }
+
+  const formatted = data.map((g) => ({
+  grantee_id: g.grantee_id,
+  school_id: g.students?.school_id,
+  student_name: `${g.students?.users?.first_name || ""} ${g.students?.users?.last_name || ""}`,
+  scholarship_name: g.scholarships?.scholarship_name,
+  status: g.status,
+  academic_year: g.academic_year,
+  semester: g.semester,
+  date_awarded: g.date_awarded,
+}));
+  setRows(formatted);
+  setLoading(false);
+};
 
   if (loading) return <p style={{ padding: 20 }}>Loading...</p>;
 
@@ -85,37 +76,24 @@ export default function Grantees() {
 
           <tbody>
             {rows.map((r) => (
-              <tr key={r.application_id}>
+              <tr key={r.grantee_id}>
                 <td style={styles.td}>{r.school_id}</td>
                 <td style={styles.td}>{r.student_name}</td>
                 <td style={styles.td}>{r.scholarship_name}</td>
                 <td style={styles.td}>
-                  {new Date(r.application_date).toLocaleDateString()}
+                  {r.date_awarded
+  ? new Date(r.date_awarded).toLocaleDateString()
+  : "Not set"}
                 </td>
 
                 <td style={styles.td}>
-                  <span style={styles.badge}>{r.status}</span>
+                  <span style={styles.badge}>{r.status  }</span>
                 </td>
 
                 {/* DOCUMENTS */}
                 <td style={styles.td}>
-                  {r.documents.length === 0 ? (
-                    <span style={{ color: "#999" }}>No files</span>
-                  ) : (
-                    r.documents.map((d, i) => (
-                      <div key={i} style={{ marginBottom: 5 }}>
-                        <a
-                          href={d.file_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={styles.link}
-                        >
-                          {d.requirement_name || "View Document"}
-                        </a>
-                      </div>
-                    ))
-                  )}
-                </td>
+  <span style={{ color: "#999" }}>Not available</span>
+</td>
               </tr>
             ))}
           </tbody>

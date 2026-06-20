@@ -99,12 +99,19 @@ console.log(reqLinks);
 };
 
   const uploadFile = async (e, row) => {
+    if (!row.application_id || !row.requirement_name) {
+  alert("Missing application ID or requirement name");
+  console.log("UPLOAD ERROR ROW:", row);
+  return;
+}
     const file = e.target.files[0];
     if (!file) return;
 
     setUploading(true);
 
-    const filePath = `${row.application_id}/${row.requirement_name}/${file.name}`;
+    const safeRequirement = row.requirement_name.replace(/\s+/g, "_");
+
+const filePath = `${row.application_id}/${safeRequirement}/${Date.now()}_${file.name}`;
 
     const { error } = await supabase.storage
       .from("application-documents")
