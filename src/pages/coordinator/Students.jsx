@@ -13,14 +13,14 @@ const [selectedStudent, setSelectedStudent] = useState(null);
 const [scholarships, setScholarships] = useState([]);
 const [selectedScholarship, setSelectedScholarship] = useState("");
 
-const [academicYear, setAcademicYear] = useState("");
-const [semester, setSemester] = useState("1st");
-const [grantDate, setGrantDate] = useState("");
+const [academicSettings, setAcademicSettings] = useState(null);
+
 const [remarks, setRemarks] = useState("");
 
   useEffect(() => {
-    loadStudents();
-  }, []);
+  loadStudents();
+  loadAcademicSettings();
+}, []);
 
   const loadStudents = async () => {
   setLoading(true);
@@ -57,6 +57,19 @@ const [remarks, setRemarks] = useState("");
   if (!scholError) setScholarships(schols || []);
 
   setLoading(false);
+};
+ 
+const loadAcademicSettings = async () => {
+  const { data, error } = await supabase
+    .from("academic_settings")
+    .select("*")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!error) {
+    setAcademicSettings(data);
+  }
 };
 
   // CLICK TO CHANGE STATUS
@@ -102,10 +115,9 @@ const [remarks, setRemarks] = useState("");
   const { error } = await supabase.from("grantees").insert({
     student_id: selectedStudent.student_id,
     scholarship_id: selectedScholarship,
-    academic_year: academicYear,
-    semester,
-    grant_date: grantDate,
-    remarks,
+    academic_year: academicSettings?.academic_year,
+    semester: academicSettings?.semester,
+    date_awarded: new Date().toISOString().split("T")[0], // AUTO DATE
     status: "Active",
   });
 
@@ -113,13 +125,9 @@ const [remarks, setRemarks] = useState("");
 
   alert("Scholarship granted!");
 
-  // RESET FORM
+  // RESET
   setOpenGrant(false);
   setSelectedScholarship("");
-  setAcademicYear("");
-  setSemester("1st");
-  setGrantDate("");
-  setRemarks("");
   setSelectedStudent(null);
 };
 
@@ -152,36 +160,13 @@ const [remarks, setRemarks] = useState("");
         ))}
       </select>
 
-      <input
-        style={input}
-        placeholder="Academic Year"
-        value={academicYear}
-        onChange={(e) => setAcademicYear(e.target.value)}
-      />
+      <p>
+  <b>Academic Year:</b> {academicSettings?.academic_year}
+</p>
 
-      <select
-        style={input}
-        value={semester}
-        onChange={(e) => setSemester(e.target.value)}
-      >
-        <option value="1st">1st</option>
-        <option value="2nd">2nd</option>
-        <option value="Summer">Summer</option>
-      </select>
-
-      <input
-        type="date"
-        style={input}
-        value={grantDate}
-        onChange={(e) => setGrantDate(e.target.value)}
-      />
-
-      <textarea
-        style={input}
-        placeholder="Remarks"
-        value={remarks}
-        onChange={(e) => setRemarks(e.target.value)}
-      />
+<p>
+  <b>Semester:</b> {academicSettings?.semester}
+</p>
 
       <button style={statusBtn} onClick={grantScholarship}>
         Grant
