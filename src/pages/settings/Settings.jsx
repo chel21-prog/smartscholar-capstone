@@ -24,7 +24,7 @@ export default function Settings() {
   // LOGOUT (ALL ROLES)
   const logout = async () => {
     await supabase.auth.signOut();
-    window.location.href = "/";
+    window.location.href = "/login";
   };
 
   // CHANGE PASSWORD (ALL ROLES)

@@ -8,6 +8,7 @@ export default function CoordinatorDashboard() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("All");
   const [academic, setAcademic] = useState(null);
+  const [scholarStats, setScholarStats] = useState([]);
 const [editMode, setEditMode] = useState(false);
 const [form, setForm] = useState({
   academic_year: "",
@@ -17,6 +18,7 @@ const [form, setForm] = useState({
   useEffect(() => {
   load();
   loadAcademic();
+  loadScholarStats(); // ✅ ADD THIS
 }, []);
 
   const load = async () => {
@@ -41,7 +43,41 @@ const [form, setForm] = useState({
     setApplications(data || []);
     setLoading(false);
   };
+  
+  const loadScholarStats = async () => {
+  const { data, error } = await supabase
+    .from("grantees")
+    .select(`
+      scholarship_id,
+      scholarships (
+        scholarship_name
+      )
+    `);
 
+  if (error) {
+    console.error(error.message);
+    return;
+  }
+
+  const grouped = {};
+
+  (data || []).forEach((g) => {
+    const id = g.scholarship_id;
+    const name = g.scholarships?.scholarship_name || "Unknown";
+
+    if (!grouped[id]) {
+      grouped[id] = {
+        scholarship_id: id,
+        scholarship_name: name,
+        count: 0,
+      };
+    }
+
+    grouped[id].count += 1;
+  });
+
+  setScholarStats(Object.values(grouped));
+};
   const loadAcademic = async () => {
   const { data, error } = await supabase
     .from("academic_settings")
@@ -199,6 +235,19 @@ const [form, setForm] = useState({
       </div>
     </>
   )}
+</div>
+
+<div style={styles.scholarCardBox}>
+  <h3 style={{ marginBottom: 10 }}>Scholarships</h3>
+
+  <div style={styles.scholarListSmall}>
+    {scholarStats.map((s) => (
+      <div key={s.scholarship_id} style={styles.scholarRowSmall}>
+        <span style={styles.nameText}>{s.scholarship_name}</span>
+        <span style={styles.countBadge}>{s.count}</span>
+      </div>
+    ))}
+  </div>
 </div>
 
       {/* FILTERS */}
@@ -437,5 +486,89 @@ const styles = {
   marginBottom: 20,
   width: "300px",
   boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+},
+scholarWrap: {
+  marginBottom: 20,
+  padding: 15,
+  background: "#fff",
+  borderRadius: 10,
+},
+
+scholarGrid: {
+  display: "flex",
+  gap: 10,
+  flexWrap: "wrap",
+},
+
+scholarCard: {
+  padding: 10,
+  border: "1px solid #eee",
+  borderRadius: 8,
+  minWidth: 160,
+},
+scholarList: {
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+},
+
+scholarRow: {
+  display: "flex",
+  justifyContent: "space-between",
+  padding: "8px 10px",
+  borderBottom: "1px solid #eee",
+  fontSize: 14,
+},
+
+countBadge: {
+  background: "#2563eb",
+  color: "#fff",
+  padding: "2px 10px",
+  borderRadius: 999,
+  fontSize: 12,
+  minWidth: 30,
+  textAlign: "center",
+},
+scholarCardBox: {
+  background: "#fff",
+  padding: 15,
+  borderRadius: 10,
+  marginBottom: 20,
+  width: "300px", // same as academic card
+  boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+},
+
+scholarListSmall: {
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+},
+
+scholarRowSmall: {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  fontSize: 13,
+  padding: "4px 0",
+  borderBottom: "1px solid #f1f1f1",
+},
+
+nameText: {
+  fontSize: 13,
+  color: "#111",
+  maxWidth: "200px",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+},
+
+countBadge: {
+  background: "#2563eb",
+  color: "#fff",
+  padding: "2px 8px",
+  borderRadius: 999,
+  fontSize: 11,
+  minWidth: 26,
+  textAlign: "center",
 },
 };
