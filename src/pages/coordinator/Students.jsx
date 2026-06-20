@@ -16,6 +16,9 @@ const [selectedScholarship, setSelectedScholarship] = useState("");
 const [academicSettings, setAcademicSettings] = useState(null);
 
 const [remarks, setRemarks] = useState("");
+// these are REQUIRED for insert
+const academicYear = academicSettings?.academic_year || "";
+const semester = academicSettings?.semester || "";
 
   useEffect(() => {
   loadStudents();
