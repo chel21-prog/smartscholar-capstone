@@ -71,7 +71,7 @@ export default function Signup() {
         gender: null,
         ethnicity: null,
         contact_number: null,
-        school_id: null,
+        school_id: `TEMP-${Date.now()}`,
         status: "Enrolled",
       },
     ]);
