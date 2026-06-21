@@ -46,7 +46,7 @@ export default function Compliance() {
 
   const grouped = {};
 
-for (const g of grantees) {
+for (const g of grantees || []) {
   const scholarshipId = g.scholarship_id;
   const applicationId = g.application_id;
 
@@ -191,13 +191,14 @@ const filePath = `${row.application_id}/${safeRequirement}/${Date.now()}_${file.
 
           <td>
             <input
-              type="file"
-              onChange={(e) => uploadFile(e, {
-                application_id: r.application_id,
-                requirement_name: req.requirement_name,
-              })}
-              disabled={uploading}
-            />
+  type="file"
+  accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+  onChange={(e) => uploadFile(e, {
+    application_id: r.application_id,
+    requirement_name: req.requirement_name,
+  })}
+  disabled={uploading}
+/>
           </td>
         </tr>
       ))}
