@@ -397,82 +397,95 @@ export default function Profile() {
 
     <div>
       <label style={styles.fieldLabel}>Program</label>
-      <input
-        style={styles.input}
-        value={form.course}
-        onChange={(e) => {
-          const updated = {
-            ...form,
-            course: e.target.value,
-          };
-          setForm(updated);
-          autoSaveStudent(updated);
-        }}
-      />
+      <select
+  style={styles.input}
+  value={form.course}
+  onChange={(e) => {
+    const updated = { ...form, course: e.target.value };
+    setForm(updated);
+    autoSaveStudent(updated);
+  }}
+>
+  <option value="">Select Course</option>
+  <option value="BSIT">Bachelor of Science in Information Technology</option>
+  <option value="BSTM">Bachelor of Science in Tourism Management</option>
+  <option value="BSHM">Bachelor of Science in Hospitality Management</option>
+  <option value="BSITech">Bachelor of Science in Industrial Technology</option>
+  <option value="BSA">Bachelor of Science in Agriculture</option>
+  <option value="BSED">Bachelor of Science in Education</option>
+</select>
     </div>
 
     <div>
       <label style={styles.fieldLabel}>Year Level</label>
-      <input
-        style={styles.input}
-        value={form.year_level}
-        onChange={(e) => {
-          const updated = {
-            ...form,
-            year_level: e.target.value,
-          };
-          setForm(updated);
-          autoSaveStudent(updated);
-        }}
-      />
+      <select
+  style={styles.input}
+  value={form.year_level}
+  onChange={(e) => {
+    const updated = { ...form, year_level: e.target.value };
+    setForm(updated);
+    autoSaveStudent(updated);
+  }}
+>
+  <option value="">Select Year Level</option>
+  <option value="1">1</option>
+  <option value="2">2</option>
+  <option value="3">3</option>
+  <option value="4">4</option>
+</select>
     </div>
 
     <div>
       <label style={styles.fieldLabel}>Gender</label>
-      <input
-        style={styles.input}
-        value={form.gender}
-        onChange={(e) => {
-          const updated = {
-            ...form,
-            gender: e.target.value,
-          };
-          setForm(updated);
-          autoSaveStudent(updated);
-        }}
-      />
+      <select
+  style={styles.input}
+  value={form.gender}
+  onChange={(e) => {
+    const updated = { ...form, gender: e.target.value };
+    setForm(updated);
+    autoSaveStudent(updated);
+  }}
+>
+  <option value="">Select Gender</option>
+  <option value="Male">Male</option>
+  <option value="Female">Female</option>
+</select>
     </div>
 
     <div>
       <label style={styles.fieldLabel}>Ethnicity</label>
       <input
-        style={styles.input}
-        value={form.ethnicity}
-        onChange={(e) => {
-          const updated = {
-            ...form,
-            ethnicity: e.target.value,
-          };
-          setForm(updated);
-          autoSaveStudent(updated);
-        }}
-      />
+  style={styles.input}
+  value={form.ethnicity}
+  onChange={(e) => {
+    const value = e.target.value;
+
+    // allow letters + spaces only
+    if (/^[a-zA-Z\s]*$/.test(value)) {
+      const updated = { ...form, ethnicity: value };
+      setForm(updated);
+      autoSaveStudent(updated);
+    }
+  }}
+/>
     </div>
 
     <div>
       <label style={styles.fieldLabel}>Contact Number</label>
       <input
-        style={styles.input}
-        value={form.contact_number}
-        onChange={(e) => {
-          const updated = {
-            ...form,
-            contact_number: e.target.value,
-          };
-          setForm(updated);
-          autoSaveStudent(updated);
-        }}
-      />
+  style={styles.input}
+  value={form.contact_number}
+  onChange={(e) => {
+    const value = e.target.value;
+
+    // allow digits only
+    if (/^\d*$/.test(value)) {
+      const updated = { ...form, contact_number: value };
+      setForm(updated);
+      autoSaveStudent(updated);
+    }
+  }}
+/>
     </div>
   </div>
 </div>
