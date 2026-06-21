@@ -50,7 +50,50 @@ export default function Login() {
 
     const role = profile.role;
 
-    if (role === "Student") navigate("/student/dashboard");
+    if (role === "Student") {
+  // USERS table
+  const { data: userData } = await supabase
+    .from("users")
+    .select(`
+      user_id,
+      first_name,
+      middle_name,
+      last_name
+    `)
+    .eq("auth_id",  authUser.id)
+    .single();
+
+  // STUDENTS table
+  const { data: studentData } = await supabase
+    .from("students")
+    .select(`
+      school_id,
+      course,
+      year_level,
+      gender,
+      ethnicity,
+      contact_number
+    `)
+    .eq("user_id", userData.user_id)
+    .single();
+
+  const profileComplete =
+    userData?.first_name &&
+    userData?.middle_name &&
+    userData?.last_name &&
+    studentData?.school_id &&
+    studentData?.course &&
+    studentData?.year_level &&
+    studentData?.gender &&
+    studentData?.ethnicity &&
+    studentData?.contact_number;
+
+  if (profileComplete) {
+    navigate("/student/dashboard");
+  } else {
+    navigate("/student/profile");
+  }
+}
     else if (role === "Coordinator") navigate("/coordinator/dashboard");
     else if (role === "Cashier") navigate("/cashier/dashboard");
     else navigate("/");

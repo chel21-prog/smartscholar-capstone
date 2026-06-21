@@ -1,5 +1,5 @@
 import { Routes, Route } from "react-router-dom";
-
+import ProfileGuard from "@/components/ProfileGuard";
 import StudentLayout from "@/layouts/StudentLayout";
 
 import Dashboard from "@/pages/student/Dashboard";
@@ -14,12 +14,12 @@ export default function StudentRoutes() {
   return (
     <Routes>
       <Route element={<StudentLayout />}>
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="apply/:id" element={<ApplyDetails />} />
-        <Route path="applications" element={<Applications />} />
-        <Route path="compliance" element={<Compliance />} />
-        <Route path="settings" element={<Settings />} />
+        <Route path="/dashboard" element={<ProfileGuard><Dashboard /></ProfileGuard>} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/apply/:id" element={<ProfileGuard><ApplyDetails /></ProfileGuard>} />
+        <Route path="/applications" element={<ProfileGuard><Applications /></ProfileGuard>} />
+        <Route path="/compliance" element={<ProfileGuard><Compliance /></ProfileGuard>} />
+        <Route path="/settings" element={<Settings />} />
       </Route>
     </Routes>
   );
