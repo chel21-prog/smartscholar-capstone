@@ -13,13 +13,17 @@ export default function Profile() {
 
   // STUDENT FORM STATE
   const [form, setForm] = useState({
-    school_id: "",
-    course: "",
-    year_level: "",
-    gender: "",
-    ethnicity: "",
-    contact_number: "",
-  });
+  first_name: "",
+  middle_name: "",
+  last_name: "",
+
+  school_id: "",
+  course: "",
+  year_level: "",
+  ethnicity: "",
+  gender: "",
+  contact_number: "",
+});
 
   const fetchEligibilityRequirements = async () => {
   if (!student) {
@@ -100,10 +104,15 @@ export default function Profile() {
 
       // GET USER ROW
       const { data: userRow } = await supabase
-        .from("users")
-        .select("user_id")
-        .eq("auth_id", user.id)
-        .maybeSingle();
+  .from("users")
+  .select(`
+    user_id,
+    first_name,
+    middle_name,
+    last_name
+  `)
+  .eq("auth_id", user.id)
+  .maybeSingle();
 
       // GET STUDENT
       const { data: studentData } = await supabase
@@ -116,14 +125,20 @@ export default function Profile() {
 
       // preload form if exists
       if (studentData) {
-        setForm({
-          school_id: studentData.school_id || "",
-          course: studentData.course || "",
-          year_level: studentData.year_level || "",
-          gender: studentData.gender || "",
-          ethnicity: studentData.ethnicity || "",
-          contact_number: studentData.contact_number || "",
-        });
+        if (studentData) {
+  setForm({
+    first_name: userRow?.first_name || "",
+    middle_name: userRow?.middle_name || "",
+    last_name: userRow?.last_name || "",
+
+    school_id: studentData.school_id || "",
+    course: studentData.course || "",
+    year_level: studentData.year_level || "",
+    ethnicity: studentData.ethnicity || "",
+    gender: studentData.gender || "",
+    contact_number: studentData.contact_number || "",
+  });
+}
       }
 
       // REQUIREMENTS
@@ -175,6 +190,15 @@ export default function Profile() {
         .maybeSingle();
 
       if (!userRow) return;
+      
+      await supabase
+  .from("users")
+  .update({
+    first_name: updatedForm.first_name,
+    middle_name: updatedForm.middle_name,
+    last_name: updatedForm.last_name,
+  })
+  .eq("user_id", userRow.user_id);
 
       const payload = {
         user_id: userRow.user_id,
@@ -303,6 +327,58 @@ export default function Profile() {
   </div>
 
   <div style={styles.formGrid}>
+    <div>
+  <label style={styles.fieldLabel}>First Name</label>
+
+  <input
+    style={styles.input}
+    value={form.first_name}
+    onChange={(e) => {
+      const updated = {
+        ...form,
+        first_name: e.target.value,
+      };
+      setForm(updated);
+      autoSaveStudent(updated);
+    }}
+  />
+</div>
+
+<div>
+  <label style={styles.fieldLabel}>Middle Name</label>
+
+  <input
+    style={styles.input}
+    value={form.middle_name}
+    onChange={(e) => {
+      const updated = {
+        ...form,
+        middle_name: e.target.value,
+      };
+      setForm(updated);
+      autoSaveStudent(updated);
+    }}
+  />
+</div>
+
+<div>
+  <label style={styles.fieldLabel}>Last Name</label>
+
+  <input
+    style={styles.input}
+    value={form.last_name}
+    onChange={(e) => {
+      const updated = {
+        ...form,
+        last_name: e.target.value,
+      };
+      setForm(updated);
+      autoSaveStudent(updated);
+    }}
+  />
+</div>
+
+
     <div>
       <label style={styles.fieldLabel}>School ID</label>
       <input

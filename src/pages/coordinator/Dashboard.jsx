@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function CoordinatorDashboard() {
   const [applications, setApplications] = useState([]);
@@ -78,6 +80,106 @@ const [form, setForm] = useState({
 
   setScholarStats(Object.values(grouped));
 };
+
+const exportReport = async () => {
+  const { data, error } = await supabase
+.from("grantees")
+.select(`
+  semester,
+  academic_year,
+
+  students (
+    course,
+    year_level,
+
+    users (
+      first_name,
+      middle_name,
+      last_name
+    )
+  ),
+
+  scholarships (
+    scholarship_name,
+    amount
+  )
+`)
+.order("scholarship_id");
+
+if (error) {
+  alert(error.message);
+  return;
+}
+
+const doc = new jsPDF("landscape");
+
+doc.setFontSize(14);
+
+doc.text(
+  `MASTERLIST OF SCHOLARS/GRANTEES, AY ${academic?.academic_year}`,
+  14,
+  15
+);
+
+const rows = data.map((g, index) => [
+
+  g.scholarships?.scholarship_name,
+
+  index + 1,
+
+  g.students?.users?.last_name,
+
+  g.students?.users?.first_name,
+
+  g.students?.users?.middle_name
+    ?.charAt(0)
+    .toUpperCase() || "",
+
+  g.students?.course,
+
+  g.students?.year_level,
+
+  g.students?.year_level,
+
+  g.scholarships?.amount,
+
+  g.semester
+
+]);
+
+autoTable(doc, {
+
+  head: [[
+    "Scholarship Grant",
+    "Seq",
+    "Last",
+    "First",
+    "MI",
+    "Program",
+    "Year",
+    "Level",
+    "Amount",
+    "Granted/Sem"
+  ]],
+
+  body: rows,
+
+  startY: 25,
+
+  theme: "grid",
+
+  styles: {
+    fontSize: 8
+  }
+
+});
+
+doc.save(
+  `Masterlist_${academic?.academic_year}.pdf`
+);
+
+};
+
   const loadAcademic = async () => {
   const { data, error } = await supabase
     .from("academic_settings")
@@ -249,6 +351,13 @@ const [form, setForm] = useState({
     ))}
   </div>
 </div>
+
+      <button
+  style={styles.btnGreen}
+  onClick={exportReport}
+>
+  Export Masterlist
+</button>
 
       {/* FILTERS */}
       <div style={styles.filterRow}>
