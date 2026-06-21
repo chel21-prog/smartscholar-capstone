@@ -18,23 +18,41 @@ export default function Applications() {
   }, []);
 
   const load = async () => {
-    setLoading(true);
+  setLoading(true);
 
-    const { data } = await supabase
-      .from("scholarship_applications")
-      .select(`
-        application_id,
-        scholarship_id,
-        status,
-        application_date,
-        scholarships (
-          scholarship_name
-        )
-      `);
+  const user = await supabase.auth.getUser();
 
-    setApplications(data || []);
-    setLoading(false);
-  };
+  // 1. Get internal user row
+  const { data: userRow } = await supabase
+    .from("users")
+    .select("user_id")
+    .eq("auth_id", user.data.user.id)
+    .single();
+
+  // 2. Get student row
+  const { data: studentRow } = await supabase
+    .from("students")
+    .select("student_id")
+    .eq("user_id", userRow.user_id)
+    .single();
+
+  // 3. Get applications for that student only
+  const { data } = await supabase
+    .from("scholarship_applications")
+    .select(`
+      application_id,
+      scholarship_id,
+      status,
+      application_date,
+      scholarships (
+        scholarship_name
+      )
+    `)
+    .eq("student_id", studentRow.student_id);
+
+  setApplications(data || []);
+  setLoading(false);
+};
 
   const viewAnswers = async (app) => {
     setSelectedApp(app);
