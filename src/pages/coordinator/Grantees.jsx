@@ -78,7 +78,21 @@ export default function Grantees() {
 };
 
   if (loading) return <p style={{ padding: 20 }}>Loading...</p>;
+ const grouped = rows.reduce((acc, r) => {
+  const key = r.school_id; // better if you use student_id
 
+  if (!acc[key]) {
+    acc[key] = {
+      school_id: r.school_id,
+      student_name: r.student_name,
+      scholarships: [],
+    };
+  }
+
+  acc[key].scholarships.push(r);
+
+  return acc;
+}, {});
   return (
     <div style={styles.page}>
       <h1 style={styles.title}>Grantees</h1>
@@ -99,45 +113,66 @@ export default function Grantees() {
           </thead>
 
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.grantee_id}>
-                <td style={styles.td}>{r.school_id}</td>
-                <td style={styles.td}>{r.student_name}</td>
-                <td style={styles.td}>{r.scholarship_name}</td>
-                <td style={styles.td}>{r.academic_year}</td>
-                <td style={styles.td}>{r.semester}</td>
-                <td style={styles.td}>
-                  {r.date_awarded
-  ? new Date(r.date_awarded).toLocaleDateString()
-  : "Not set"}
-                </td>
+  {Object.values(grouped).map((student) => (
+    <>
+      {student.scholarships.map((s, index) => (
+        <tr key={s.grantee_id}>
 
-                <td style={styles.td}>
-                  <span style={styles.badge}>{r.status  }</span>
-                </td>
+          {/* ✅ MERGED STUDENT CELL */}
+          {index === 0 && (
+            <td
+              rowSpan={student.scholarships.length}
+              style={{ verticalAlign: "middle", fontWeight: "bold" }}
+            >
+              {student.school_id}
+            </td>
+          )}
+          {index === 0 && (
+            <td
+              rowSpan={student.scholarships.length}
+              style={{ verticalAlign: "middle", fontWeight: "bold" }}
+            >
+              {student.student_name}
+            </td>
+          )}
+          <td>{s.scholarship_name}</td>
+          <td>{s.academic_year}</td>
+          <td>{s.semester}</td>
 
-                {/* DOCUMENTS */}
-                <td style={styles.td}>
-  {!r.documents || r.documents.length === 0 ? (
-    <span style={{ color: "#999" }}>No files uploaded</span>
-  ) : (
-    r.documents.map((d, i) => (
-      <div key={i} style={{ marginBottom: 5 }}>
-        <a
-          href={d.file_url}
-          target="_blank"
-          rel="noreferrer"
-          style={styles.link}
-        >
-          {d.requirement_name || "View Document"}
-        </a>
-      </div>
-    ))
-  )}
-</td>
-              </tr>
-            ))}
-          </tbody>
+          <td>
+            {s.date_awarded
+              ? new Date(s.date_awarded).toLocaleDateString()
+              : "Not set"}
+          </td>
+
+          <td>
+            <span style={styles.badge}>{s.status}</span>
+          </td>
+
+          <td>
+            {!s.documents || s.documents.length === 0 ? (
+              <span style={{ color: "#999" }}>No files uploaded</span>
+            ) : (
+              s.documents.map((d, i) => (
+                <div key={i}>
+                  <a
+                    href={d.file_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={styles.link}
+                  >
+                    {d.requirement_name || "View Document"}
+                  </a>
+                </div>
+              ))
+            )}
+          </td>
+
+        </tr>
+      ))}
+    </>
+  ))}
+</tbody>
         </table>
       </div>
     </div>
