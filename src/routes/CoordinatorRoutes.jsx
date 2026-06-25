@@ -9,7 +9,7 @@ import Students from "@/pages/coordinator/Students";
 import CoordinatorApplications from "@/pages/coordinator/CoordinatorApplications";
 import Requirements from "@/pages/coordinator/Requirements";
 import Settings from "@/pages/settings/Settings";
-import ReportTemplateBuilder from "@/pages/coordinator/ReportTemplateBuilder";
+import ReportBuilder from "@/pages/coordinator/ReportBuilder";
 export default function CoordinatorRoutes() {
   return (
     <Routes>
@@ -23,7 +23,7 @@ export default function CoordinatorRoutes() {
   element={<CoordinatorApplications />}
 />
         <Route path="requirements" element={<Requirements />} />
-        <Route path="/report-templates" element={<ReportTemplateBuilder />} />
+        <Route path="/ReportBuilder" element={<ReportBuilder />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>

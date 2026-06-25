@@ -46,7 +46,7 @@ const [open, setOpen] = useState(false);
         <NavLink to="/coordinator/students">Students</NavLink>
         <NavLink to="/coordinator/grantees">Grantees</NavLink>
         <NavLink to="/coordinator/applications">Applications</NavLink>
-        <NavLink to="/coordinator/report-templates">Report Templates</NavLink>
+        <NavLink to="/coordinator/ReportBuilder">Report Builder</NavLink>
         <NavLink to="/coordinator/requirements">Requirements</NavLink>
         <NavLink to="/coordinator/settings">Settings</NavLink>
       </nav>

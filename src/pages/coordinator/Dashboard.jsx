@@ -12,10 +12,39 @@ export default function CoordinatorDashboard() {
   const [academic, setAcademic] = useState(null);
   const [scholarStats, setScholarStats] = useState([]);
 const [editMode, setEditMode] = useState(false);
+const [showReportModal, setShowReportModal] = useState(false);
 const [form, setForm] = useState({
   academic_year: "",
   semester: "",
 });
+const [reportFilters, setReportFilters] = useState({
+  reportType: "grantees",
+  academicYear: "",
+  semester: "",
+  course: "",
+  yearLevel: "",
+  status: "",
+});
+
+const [reportLayout, setReportLayout] = useState("portrait");
+
+const [columns, setColumns] = useState({
+  schoolId: true,
+  studentName: true,
+  scholarship: true,
+  course: true,
+  yearLevel: true,
+  academicYear: true,
+  semester: true,
+  status: true,
+});
+
+const [signatories, setSignatories] = useState([
+  {
+    name: "",
+    position: "",
+  },
+]);
 
   useEffect(() => {
   load();
@@ -27,20 +56,30 @@ const [form, setForm] = useState({
     setLoading(true);
 
     const { data } = await supabase
-      .from("scholarship_applications")
-      .select(`
-  application_id,
-  status,
-  application_date,
-  scholarship_id,
-  students (
-    student_id
-  ),
-  scholarships (
-    scholarship_name
-  )
-`)
-      .order("application_date", { ascending: false });
+  .from("scholarship_applications")
+  .select(`
+    application_id,
+    status,
+    application_date,
+    scholarship_id,
+
+    students (
+      student_id,
+      course,
+      year_level,
+
+      users (
+        first_name,
+        middle_name,
+        last_name
+      )
+    ),
+
+    scholarships (
+      scholarship_name
+    )
+  `)
+  .order("application_date", { ascending: false });
 
     setApplications(data || []);
     setLoading(false);
@@ -80,6 +119,89 @@ const [form, setForm] = useState({
 
   setScholarStats(Object.values(grouped));
 };
+
+
+const generatePDF = async () => {
+  const doc = new jsPDF(
+    reportLayout === "landscape"
+      ? "landscape"
+      : "portrait"
+  );
+
+  const headers = [];
+
+  if (columns.schoolId)
+    headers.push("School ID");
+
+  if (columns.studentName)
+    headers.push("Student Name");
+
+  if (columns.scholarship)
+    headers.push("Scholarship");
+
+  if (columns.course)
+    headers.push("Course");
+
+  if (columns.yearLevel)
+    headers.push("Year Level");
+
+  if (columns.academicYear)
+    headers.push("Academic Year");
+
+  if (columns.semester)
+    headers.push("Semester");
+
+  if (columns.status)
+    headers.push("Status");
+
+  const rows = applications.map((a) => {
+    const row = [];
+
+    if (columns.schoolId)
+      row.push(a.students?.student_id);
+
+    if (columns.studentName)
+      row.push(
+        `${a.students?.users?.first_name || ""} ${
+          a.students?.users?.last_name || ""
+        }`
+      );
+
+    if (columns.scholarship)
+      row.push(
+        a.scholarships?.scholarship_name
+      );
+
+    if (columns.course)
+      row.push(a.students?.course);
+
+    if (columns.yearLevel)
+      row.push(a.students?.year_level);
+
+    if (columns.academicYear)
+      row.push(academic?.academic_year);
+
+    if (columns.semester)
+      row.push(academic?.semester);
+
+    if (columns.status)
+      row.push(a.status);
+
+    return row;
+  });
+
+  doc.text("Scholarship Report", 14, 15);
+
+  autoTable(doc, {
+    head: [headers],
+    body: rows,
+    startY: 25,
+  });
+
+  doc.save("Scholarship_Report.pdf");
+};
+
+
 
 const exportReport = async () => {
   const { data, error } = await supabase
@@ -200,6 +322,19 @@ doc.save(
 
   // VIEW ANSWERS
   const viewAnswers = async (app) => {
+    const updateStatus = async (id, status) => {
+  const { error } = await supabase
+    .from("scholarship_applications")
+    .update({ status })
+    .eq("application_id", id);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  load();
+};
     setSelectedApp(app);
 
     const { data } = await supabase
@@ -277,6 +412,31 @@ doc.save(
       : applications.filter((a) => a.status === filter);
 
   if (loading) return <p style={styles.loading}>Loading...</p>;
+  
+  const addSignatory = () => {
+  setSignatories([
+    ...signatories,
+    {
+      name: "",
+      position: "",
+    },
+  ]);
+};
+
+const removeSignatory = (index) => {
+  setSignatories(
+    signatories.filter((_, i) => i !== index)
+  );
+};
+
+const updateSignatory = (index, field, value) => {
+  const updated = [...signatories];
+
+  updated[index][field] = value;
+
+  setSignatories(updated);
+};
+
 
   return (
     <div style={styles.page}>
@@ -357,6 +517,11 @@ doc.save(
   onClick={exportReport}
 >
   Export Masterlist
+</button>
+<button
+  style={styles.btnGreen}
+  onClick={() => setShowReportModal(true)}
+>Generate Report
 </button>
 
       {/* FILTERS */}
@@ -479,6 +644,316 @@ doc.save(
           </div>
         </div>
       )}
+
+      {showReportModal && (
+  <div style={styles.overlay}>
+    <div
+      style={{
+        background: "#fff",
+        width: "900px",
+        maxHeight: "90vh",
+        overflowY: "auto",
+        padding: 20,
+        borderRadius: 10,
+      }}
+    >
+      <h2>Report Builder</h2>
+
+      <hr />
+
+      <h3>Layout</h3>
+
+      <select
+        value={reportLayout}
+        onChange={(e) =>
+          setReportLayout(e.target.value)
+        }
+      >
+        <option value="portrait">
+          Portrait
+        </option>
+
+        <option value="landscape">
+          Landscape
+        </option>
+      </select>
+
+      <h3>Filters</h3>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(2,1fr)",
+          gap: 10,
+        }}
+      >
+        <select
+          value={reportFilters.reportType}
+          onChange={(e) =>
+            setReportFilters({
+              ...reportFilters,
+              reportType: e.target.value,
+            })
+          }
+        >
+          <option value="grantees">
+            Grantees
+          </option>
+
+          <option value="applications">
+            Applications
+          </option>
+
+          <option value="scholarships">
+            Scholarships
+          </option>
+        </select>
+
+        <input
+          placeholder="Academic Year"
+          value={reportFilters.academicYear}
+          onChange={(e) =>
+            setReportFilters({
+              ...reportFilters,
+              academicYear: e.target.value,
+            })
+          }
+        />
+
+        <select
+          value={reportFilters.semester}
+          onChange={(e) =>
+            setReportFilters({
+              ...reportFilters,
+              semester: e.target.value,
+            })
+          }
+        >
+          <option value="">
+            All Semesters
+          </option>
+
+          <option>
+            1st Semester
+          </option>
+
+          <option>
+            2nd Semester
+          </option>
+        </select>
+
+        <input
+          placeholder="Course"
+          value={reportFilters.course}
+          onChange={(e) =>
+            setReportFilters({
+              ...reportFilters,
+              course: e.target.value,
+            })
+          }
+        />
+
+        <input
+          placeholder="Year Level"
+          value={reportFilters.yearLevel}
+          onChange={(e) =>
+            setReportFilters({
+              ...reportFilters,
+              yearLevel: e.target.value,
+            })
+          }
+        />
+      </div>
+
+      <h3>Columns</h3>
+
+      {Object.keys(columns).map((key) => (
+        <label
+          key={key}
+          style={{
+            display: "block",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={columns[key]}
+            onChange={() =>
+              setColumns({
+                ...columns,
+                [key]:
+                  !columns[key],
+              })
+            }
+          />
+
+          {key}
+        </label>
+      ))}
+
+      <h3>Signatories</h3>
+
+      {signatories.map((s, index) => (
+        <div
+          key={index}
+          style={{
+            display: "flex",
+            gap: 8,
+            marginBottom: 8,
+          }}
+        >
+          <input
+            placeholder="Name"
+            value={s.name}
+            onChange={(e) =>
+              updateSignatory(
+                index,
+                "name",
+                e.target.value
+              )
+            }
+          />
+
+          <input
+            placeholder="Position"
+            value={s.position}
+            onChange={(e) =>
+              updateSignatory(
+                index,
+                "position",
+                e.target.value
+              )
+            }
+          />
+
+          <button
+            onClick={() =>
+              removeSignatory(index)
+            }
+          >
+            Delete
+          </button>
+        </div>
+      ))}
+
+      <button
+        onClick={addSignatory}
+      >
+        Add Signatory
+      </button>
+
+      <hr />
+
+      <h3>Preview</h3>
+
+<div
+  style={{
+    border: "1px solid #ddd",
+    background: "#fff",
+    maxHeight: 350,
+    overflow: "auto",
+  }}
+>
+  <table
+    style={{
+      width: "100%",
+      borderCollapse: "collapse",
+    }}
+  >
+    <thead>
+      <tr>
+        {columns.schoolId && <th>School ID</th>}
+        {columns.studentName && <th>Student Name</th>}
+        {columns.scholarship && <th>Scholarship</th>}
+        {columns.course && <th>Course</th>}
+        {columns.yearLevel && <th>Year Level</th>}
+        {columns.academicYear && <th>Academic Year</th>}
+        {columns.semester && <th>Semester</th>}
+        {columns.status && <th>Status</th>}
+      </tr>
+    </thead>
+
+    <tbody>
+      {applications.slice(0, 10).map((a) => (
+        <tr key={a.application_id}>
+          {columns.schoolId && (
+            <td>{a.students?.student_id}</td>
+          )}
+
+          {columns.studentName && (
+            <td>
+              {a.students?.users?.first_name}{" "}
+              {a.students?.users?.last_name}
+            </td>
+          )}
+
+          {columns.scholarship && (
+            <td>
+              {a.scholarships?.scholarship_name}
+            </td>
+          )}
+
+          {columns.course && (
+            <td>
+              {a.students?.course || "-"}
+            </td>
+          )}
+
+          {columns.yearLevel && (
+            <td>
+              {a.students?.year_level || "-"}
+            </td>
+          )}
+
+          {columns.academicYear && (
+            <td>
+              {academic?.academic_year}
+            </td>
+          )}
+
+          {columns.semester && (
+            <td>
+              {academic?.semester}
+            </td>
+          )}
+
+          {columns.status && (
+            <td>{a.status}</td>
+          )}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+
+      <br />
+
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+        }}
+      >
+        <button
+  style={styles.btnGreen}
+  onClick={generatePDF}
+>
+  Generate PDF
+</button>
+
+        <button
+          style={styles.btnRed}
+          onClick={() =>
+            setShowReportModal(false)
+          }
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }
@@ -679,5 +1154,12 @@ countBadge: {
   fontSize: 11,
   minWidth: 26,
   textAlign: "center",
+},
+input: {
+  width: "100%",
+  padding: "8px",
+  border: "1px solid #ddd",
+  borderRadius: "6px",
+  marginBottom: "10px",
 },
 };

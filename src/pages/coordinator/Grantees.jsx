@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function Grantees() {
@@ -114,7 +114,7 @@ export default function Grantees() {
 
           <tbody>
   {Object.values(grouped).map((student) => (
-    <>
+  <React.Fragment key={student.student_id}>
       {student.scholarships.map((s, index) => (
         <tr key={s.grantee_id}>
 
@@ -170,7 +170,7 @@ export default function Grantees() {
 
         </tr>
       ))}
-    </>
+    </React.Fragment  >
   ))}
 </tbody>
         </table>
