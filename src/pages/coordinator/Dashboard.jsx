@@ -17,14 +17,6 @@ const [form, setForm] = useState({
   academic_year: "",
   semester: "",
 });
-const [reportFilters, setReportFilters] = useState({
-  reportType: "grantees",
-  academicYear: "",
-  semester: "",
-  course: "",
-  yearLevel: "",
-  status: "",
-});
 
 const [reportLayout, setReportLayout] = useState("portrait");
 
@@ -46,6 +38,15 @@ const [signatories, setSignatories] = useState([
   },
 ]);
 
+const [filterOptions, setFilterOptions] = useState({
+  scholarships: [],
+  courses: [],
+  yearLevels: [],
+  statuses: [],
+  academicYears: [],
+});
+
+
   useEffect(() => {
   load();
   loadAcademic();
@@ -62,7 +63,8 @@ const [signatories, setSignatories] = useState([
     status,
     application_date,
     scholarship_id,
-
+    academic_year,
+    semester,
     students (
       student_id,
       course,
@@ -82,9 +84,68 @@ const [signatories, setSignatories] = useState([
   .order("application_date", { ascending: false });
 
     setApplications(data || []);
+    const scholarships = [
+  ...new Set(
+    (data || []).map(
+      (a) => a.scholarships?.scholarship_name
+    )
+  ),
+];
+
+const courses = [
+  ...new Set(
+    (data || []).map(
+      (a) => a.students?.course
+    )
+  ),
+];
+
+const yearLevels = [
+  ...new Set(
+    (data || []).map(
+      (a) => a.students?.year_level
+    )
+  ),
+];
+
+const statuses = [
+  ...new Set(
+    (data || []).map(
+      (a) => a.status
+    )
+  ),
+];
+
+const academicYears = [
+  ...new Set(
+    (data || [])
+      .map((a) => a.academic_year)
+      .filter(Boolean)
+  ),
+];
+
+setFilterOptions({
+  scholarships,
+  courses,
+  yearLevels,
+  statuses,
+  academicYears,
+});
+
+
     setLoading(false);
   };
   
+  const [reportFilters, setReportFilters] = useState({
+  reportType: "grantees",
+  academicYear: "All",
+  semester: "All",
+  scholarship: "All",
+  course: "All",
+  yearLevel: "All",
+  status: "All",
+});
+
   const loadScholarStats = async () => {
   const { data, error } = await supabase
     .from("grantees")
@@ -128,6 +189,53 @@ const loadImage = (src) => {
   });
 };
 
+const filteredApplications =
+  applications.filter((a) => {
+
+    if (
+      reportFilters.scholarship !== "All" &&
+      a.scholarships?.scholarship_name !==
+        reportFilters.scholarship
+    )
+      return false;
+
+    if (
+      reportFilters.course !== "All" &&
+      a.students?.course !==
+        reportFilters.course
+    )
+      return false;
+
+    if (
+      reportFilters.yearLevel !== "All" &&
+      String(a.students?.year_level) !==
+        reportFilters.yearLevel
+    )
+      return false;
+
+    if (
+      reportFilters.status !== "All" &&
+      a.status !== reportFilters.status
+    )
+      return false;
+
+    if (
+  reportFilters.academicYear !== "All" &&
+  a.academic_year !== reportFilters.academicYear
+)
+  return false;
+
+if (
+  reportFilters.semester &&
+  reportFilters.semester !== "All" &&
+  a.semester !== reportFilters.semester
+)
+  return false;
+
+    return true;
+  });
+
+  
 const generatePDF = async () => {
   const doc = new jsPDF(
     reportLayout === "landscape"
@@ -153,7 +261,9 @@ const generatePDF = async () => {
   if (columns.semester) headers.push("Semester");
   if (columns.status) headers.push("Status");
 
-  const rows = applications.map((a) => {
+
+  
+  const rows = filteredApplications.map((a) => {
     const row = [];
 
     if (columns.schoolId)
@@ -176,10 +286,10 @@ const generatePDF = async () => {
       row.push(a.students?.year_level);
 
     if (columns.academicYear)
-      row.push(academic?.academic_year);
+    row.push(a.academic_year);
 
     if (columns.semester)
-      row.push(academic?.semester);
+    row.push(a.semester);
 
     if (columns.status)
       row.push(a.status);
@@ -394,9 +504,7 @@ doc.save(
   }
 };
 
-  // VIEW ANSWERS
-  const viewAnswers = async (app) => {
-    const updateStatus = async (id, status) => {
+const updateStatus = async (id, status) => {
   const { error } = await supabase
     .from("scholarship_applications")
     .update({ status })
@@ -409,6 +517,10 @@ doc.save(
 
   load();
 };
+
+  // VIEW ANSWERS
+  const viewAnswers = async (app) => {
+    
     setSelectedApp(app);
 
     const { data } = await supabase
@@ -784,16 +896,25 @@ const updateSignatory = (index, field, value) => {
           </option>
         </select>
 
-        <input
-          placeholder="Academic Year"
-          value={reportFilters.academicYear}
-          onChange={(e) =>
-            setReportFilters({
-              ...reportFilters,
-              academicYear: e.target.value,
-            })
-          }
-        />
+        <select
+  value={reportFilters.academicYear}
+  onChange={(e) =>
+    setReportFilters({
+      ...reportFilters,
+      academicYear: e.target.value,
+    })
+  }
+>
+  <option value="All">
+    All Academic Years
+  </option>
+
+  {filterOptions.academicYears.map((ay) => (
+    <option key={ay} value={ay}>
+      {ay}
+    </option>
+  ))}
+</select>
 
         <select
           value={reportFilters.semester}
@@ -817,27 +938,97 @@ const updateSignatory = (index, field, value) => {
           </option>
         </select>
 
-        <input
-          placeholder="Course"
-          value={reportFilters.course}
-          onChange={(e) =>
-            setReportFilters({
-              ...reportFilters,
-              course: e.target.value,
-            })
-          }
-        />
+        <select
+  value={reportFilters.scholarship}
+  onChange={(e) =>
+    setReportFilters({
+      ...reportFilters,
+      scholarship: e.target.value,
+    })
+  }
+>
+  <option value="All">
+    All Scholarships
+  </option>
 
-        <input
-          placeholder="Year Level"
-          value={reportFilters.yearLevel}
-          onChange={(e) =>
-            setReportFilters({
-              ...reportFilters,
-              yearLevel: e.target.value,
-            })
-          }
-        />
+  {filterOptions.scholarships.map((scholarship) => (
+    <option
+      key={scholarship}
+      value={scholarship}
+    >
+      {scholarship}
+    </option>
+  ))}
+</select>
+
+<select
+  value={reportFilters.status}
+  onChange={(e) =>
+    setReportFilters({
+      ...reportFilters,
+      status: e.target.value,
+    })
+  }
+>
+  <option value="All">
+    All Statuses
+  </option>
+
+  {filterOptions.statuses.map((status) => (
+    <option
+      key={status}
+      value={status}
+    >
+      {status}
+    </option>
+  ))}
+</select>
+
+        <select
+  value={reportFilters.course}
+  onChange={(e) =>
+    setReportFilters({
+      ...reportFilters,
+      course: e.target.value,
+    })
+  }
+>
+  <option value="All">
+    All Courses
+  </option>
+
+  {filterOptions.courses.map((course) => (
+    <option
+      key={course}
+      value={course}
+    >
+      {course}
+    </option>
+  ))}
+</select>
+
+        <select
+  value={reportFilters.yearLevel}
+  onChange={(e) =>
+    setReportFilters({
+      ...reportFilters,
+      yearLevel: e.target.value,
+    })
+  }
+>
+  <option value="All">
+    All Year Levels
+  </option>
+
+  {filterOptions.yearLevels.map((level) => (
+    <option
+      key={level}
+      value={level}
+    >
+      {level}
+    </option>
+  ))}
+</select>
       </div>
 
       <h3>Columns</h3>
@@ -948,7 +1139,7 @@ const updateSignatory = (index, field, value) => {
     </thead>
 
     <tbody>
-      {applications.slice(0, 10).map((a) => (
+      {filteredApplications.slice(0,10).map((a) => (
         <tr key={a.application_id}>
           {columns.schoolId && (
             <td>{a.students?.student_id}</td>
@@ -980,15 +1171,11 @@ const updateSignatory = (index, field, value) => {
           )}
 
           {columns.academicYear && (
-            <td>
-              {academic?.academic_year}
-            </td>
+            <td>{a.academic_year}</td>
           )}
 
           {columns.semester && (
-            <td>
-              {academic?.semester}
-            </td>
+            <td>{a.semester}</td>
           )}
 
           {columns.status && (
