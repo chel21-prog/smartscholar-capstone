@@ -27,21 +27,23 @@ const MARGIN_BOTTOM = 10;
     const { data } = await supabase
   .from("scholarship_applications")
   .select(`
-    application_id,
-    status,
-    application_date,
-    scholarship_id,
-    students (
-      student_id,
-      users (
-        first_name,
-        last_name
-      )
-    ),
-    scholarships (
-      scholarship_name
+  application_id,
+  status,
+  application_date,
+  academic_year,
+  semester,
+  scholarship_id,
+  students (
+    student_id,
+    users (
+      first_name,
+      last_name
     )
-  `)
+  ),
+  scholarships (
+    scholarship_name
+  )
+`)
   .order("application_date", { ascending: false });
 
     setApplications(data || []);
@@ -124,6 +126,9 @@ const MARGIN_BOTTOM = 10;
       scholarship_id: app.scholarship_id,
       application_id: app.application_id,
       status: "Active",
+      date_awarded: new Date().toISOString().split("T")[0],
+      academic_year: app.academic_year,
+      semester: app.semester,
     });
 
     setApplications((prev) =>
@@ -284,6 +289,8 @@ const addFooter = (doc, footerImage) => {
           <tr>
             <th>Student</th>
             <th>Scholarship</th>
+            <th>AY Approved</th>
+            <th>Semester Approved</th>
             <th>Status</th>
             <th>Application Date</th>
             <th>Actions</th>
@@ -295,6 +302,8 @@ const addFooter = (doc, footerImage) => {
             <tr key={a.application_id}>
               <td>{getStudentName(a)}</td>
               <td>{a.scholarships?.scholarship_name}</td>
+              <td>{a.academic_year}</td>
+              <td>{a.semester}</td>
               <td>{a.status}</td>
               <td>
                 {new Date(a.application_date).toLocaleDateString()}

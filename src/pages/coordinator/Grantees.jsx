@@ -13,29 +13,30 @@ export default function Grantees() {
   setLoading(true);
 
   const { data, error } = await supabase
-  .from("grantees")
-  .select(`
-  grantee_id,
-  student_id,
-  application_id,
-  scholarship_id,
-  status,
-  date_awarded,
-  academic_year,
-  semester,
-    scholarships (
-      scholarship_name
-    )
-  `)
-  .order("date_awarded", { ascending: false });
+    .from("grantees")
+    .select(`
+      grantee_id,
+      student_id,
+      application_id,
+      scholarship_id,
+      status,
+      date_awarded,
+      academic_year,
+      semester,
 
-  const { data: docs, error: docsError } = await supabase
-  .from("application_documents")
-  .select("*");
+      students (
+        school_id,
+        users (
+          first_name,
+          last_name
+        )
+      ),
 
-if (docsError) {
-  console.error("Docs error:", docsError.message);
-}
+      scholarships (
+        scholarship_name
+      )
+    `)
+    .order("date_awarded", { ascending: false });
 
   if (error) {
     console.error(error.message);
@@ -43,28 +44,35 @@ if (docsError) {
     return;
   }
 
-  const formatted = data.map((g) => {
+  const { data: docs } = await supabase
+    .from("application_documents")
+    .select("*")
+    .in(
+      "application_id",
+      (data || []).map((g) => g.application_id)
+    );
 
-  // 🔥 MATCH DOCUMENTS USING application_id
-  const granteeDocs =
-    docs?.filter(
-      (d) => d.application_id === g.application_id
-    ) || [];
+  const formatted = (data || []).map((g) => {
+    const granteeDocs =
+      docs?.filter((d) => d.application_id === g.application_id) || [];
 
-  return {
-    grantee_id: g.grantee_id,
-    school_id: g.students?.school_id,
-    student_name: `${g.students?.users?.first_name || ""} ${g.students?.users?.last_name || ""}`,
-    scholarship_name: g.scholarships?.scholarship_name,
-    status: g.status,
-    academic_year: g.academic_year,
-    semester: g.semester,
-    date_awarded: g.date_awarded,
+    const first = g.students?.users?.first_name ?? "";
+    const last = g.students?.users?.last_name ?? "";
 
-    // 🔥 THIS IS WHAT YOU WERE MISSING
-    documents: granteeDocs,
-  };
-});
+    return {
+      grantee_id: g.grantee_id,
+      school_id: g.students?.school_id ?? "N/A",
+      student_name: `${first} ${last}`.trim() || "Unknown",
+      scholarship_name: g.scholarships?.scholarship_name ?? "N/A",
+      status: g.status,
+      academic_year: g.academic_year ?? "N/A",
+      semester: g.semester ?? "N/A",
+      date_awarded: g.date_awarded,
+
+      documents: granteeDocs,
+    };
+  });
+
   setRows(formatted);
   setLoading(false);
 };
@@ -82,6 +90,8 @@ if (docsError) {
               <th style={styles.th}>School ID</th>
               <th style={styles.th}>Student Name</th>
               <th style={styles.th}>Scholarship</th>
+              <th style={styles.th}>AY Approved</th>
+              <th style={styles.th}>Semester Approved</th>
               <th style={styles.th}>Date Approved</th>
               <th style={styles.th}>Status</th>
               <th style={styles.th}>Documents</th>
@@ -94,6 +104,8 @@ if (docsError) {
                 <td style={styles.td}>{r.school_id}</td>
                 <td style={styles.td}>{r.student_name}</td>
                 <td style={styles.td}>{r.scholarship_name}</td>
+                <td style={styles.td}>{r.academic_year}</td>
+                <td style={styles.td}>{r.semester}</td>
                 <td style={styles.td}>
                   {r.date_awarded
   ? new Date(r.date_awarded).toLocaleDateString()
