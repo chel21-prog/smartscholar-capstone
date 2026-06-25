@@ -120,6 +120,13 @@ const [signatories, setSignatories] = useState([
   setScholarStats(Object.values(grouped));
 };
 
+const loadImage = (src) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = src;
+    img.onload = () => resolve(img);
+  });
+};
 
 const generatePDF = async () => {
   const doc = new jsPDF(
@@ -128,31 +135,23 @@ const generatePDF = async () => {
       : "portrait"
   );
 
+  // Load images from public folder
+  const headerImg = await loadImage("/header.png");
+  const footerImg = await loadImage("/footer.png");
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
   const headers = [];
 
-  if (columns.schoolId)
-    headers.push("School ID");
-
-  if (columns.studentName)
-    headers.push("Student Name");
-
-  if (columns.scholarship)
-    headers.push("Scholarship");
-
-  if (columns.course)
-    headers.push("Course");
-
-  if (columns.yearLevel)
-    headers.push("Year Level");
-
-  if (columns.academicYear)
-    headers.push("Academic Year");
-
-  if (columns.semester)
-    headers.push("Semester");
-
-  if (columns.status)
-    headers.push("Status");
+  if (columns.schoolId) headers.push("School ID");
+  if (columns.studentName) headers.push("Student Name");
+  if (columns.scholarship) headers.push("Scholarship");
+  if (columns.course) headers.push("Course");
+  if (columns.yearLevel) headers.push("Year Level");
+  if (columns.academicYear) headers.push("Academic Year");
+  if (columns.semester) headers.push("Semester");
+  if (columns.status) headers.push("Status");
 
   const rows = applications.map((a) => {
     const row = [];
@@ -168,9 +167,7 @@ const generatePDF = async () => {
       );
 
     if (columns.scholarship)
-      row.push(
-        a.scholarships?.scholarship_name
-      );
+      row.push(a.scholarships?.scholarship_name);
 
     if (columns.course)
       row.push(a.students?.course);
@@ -190,12 +187,89 @@ const generatePDF = async () => {
     return row;
   });
 
-  doc.text("Scholarship Report", 14, 15);
+  // Header
+  doc.addImage(
+    headerImg,
+    "PNG",
+    0,
+    0,
+    pageWidth,
+    25
+  );
+
+  doc.setFontSize(14);
+  doc.text(
+    "Scholarship Report",
+    pageWidth / 2,
+    35,
+    { align: "center" }
+  );
 
   autoTable(doc, {
     head: [headers],
     body: rows,
-    startY: 25,
+    startY: 45,
+
+    margin: {
+      top: 40,
+      bottom: 30,
+    },
+
+    didDrawPage: (data) => {
+      // Header every page
+      doc.addImage(
+        headerImg,
+        "PNG",
+        0,
+        0,
+        pageWidth,
+        25
+      );
+
+      // Footer every page
+      doc.addImage(
+        footerImg,
+        "PNG",
+        0,
+        pageHeight - 20,
+        pageWidth,
+        20
+      );
+
+      // Page Number
+      doc.setFontSize(10);
+      doc.text(
+        `Page ${doc.internal.getNumberOfPages()}`,
+        pageWidth - 20,
+        pageHeight - 8
+      );
+    },
+  });
+
+  // Signatories
+  let y =
+    doc.lastAutoTable.finalY + 20;
+
+  signatories.forEach((s, index) => {
+    const x =
+      20 +
+      index *
+        ((pageWidth - 40) /
+          signatories.length);
+
+    doc.line(x, y, x + 50, y);
+
+    doc.text(
+      s.name || "",
+      x,
+      y + 5
+    );
+
+    doc.text(
+      s.position || "",
+      x,
+      y + 12
+    );
   });
 
   doc.save("Scholarship_Report.pdf");
