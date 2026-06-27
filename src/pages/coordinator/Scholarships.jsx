@@ -7,6 +7,12 @@ export default function Scholarships() {
   const [editMode, setEditMode] = useState(false);
 const [editingId, setEditingId] = useState(null);
 
+  const ITEMS_PER_PAGE = 10;
+const [currentPage, setCurrentPage] = useState(1);
+// SEARCH & FILTERS
+const [statusFilter, setStatusFilter] = useState("All");
+const [sponsorFilter, setSponsorFilter] = useState("All");
+const [search, setSearch] = useState("");
   // SCHOLARSHIP INFO
   const [name, setName] = useState("");
   const [sponsor, setSponsor] = useState("");
@@ -456,113 +462,313 @@ const viewForm = async (scholarshipId) => {
     setFields([]);
   };
 
+  const closeModal = () => {
+  setOpen(false);
+  setViewOpen(false);
+  setViewFormOpen(false);
+
+  reset();
+
+  setEditMode(false);
+  setEditingId(null);
+
+  setShowAppForm(false);
+  setShowEligForm(false);
+};
+  
+  
+
+const sponsors = [
+  "All",
+  ...new Set(list.map((s) => s.sponsor).filter(Boolean)),
+];
+
+const filteredScholarships = list.filter((s) => {
+  const keyword = search.toLowerCase();
+
+  const matchesSearch =
+    (s.scholarship_name || "").toLowerCase().includes(keyword) ||
+    (s.sponsor || "").toLowerCase().includes(keyword) ||
+    (s.description || "").toLowerCase().includes(keyword) ||
+    String(s.amount || "").includes(keyword) ||
+    String(s.slots || "").includes(keyword) ||
+    (s.submission_deadline || "").toLowerCase().includes(keyword) ||
+    (s.status || "").toLowerCase().includes(keyword);
+
+  const matchesStatus =
+    statusFilter === "All" ||
+    s.status === statusFilter;
+
+  const matchesSponsor =
+    sponsorFilter === "All" ||
+    s.sponsor === sponsorFilter;
+
   return (
-    <div style={page}>
-      <div style={header}>
-        <h1>Scholarships</h1>
-        <button style={btn} onClick={() => setOpen(true)}>
-          + Create Scholarship
-        </button>
-      </div>
+    matchesSearch &&
+    matchesStatus &&
+    matchesSponsor
+  );
+});
+const totalPages = Math.ceil(
+  filteredScholarships.length / ITEMS_PER_PAGE
+);
+
+const paginatedScholarships = filteredScholarships.slice(
+  (currentPage - 1) * ITEMS_PER_PAGE,
+  currentPage * ITEMS_PER_PAGE
+);
+
+
+  return (
+    <div style={styles.page}>
+      <div style={styles.header}>
+  <div style={styles.titleBlock}>
+    <h1 style={styles.title}>Scholarships</h1>
+    <p style={styles.subtitle}>
+      Manage scholarships, requirements, and application forms
+    </p>
+  </div>
+
+  <button
+    style={styles.btnPrimary}
+    onClick={() => setOpen(true)}
+  >
+    + Create Scholarship
+  </button>
+</div>
+
+
+      <div
+  style={{
+    display: "flex",
+    gap: 15,
+    marginBottom: 20,
+    flexWrap: "wrap",
+    alignItems: "center",
+  }}
+>
+  <input
+    type="text"
+    placeholder="Search scholarships..."
+    value={search}
+    onChange={(e) => {
+      setSearch(e.target.value);
+      setCurrentPage(1);
+    }}
+    style={{
+      ...styles.input,
+      maxWidth: 320,
+    }}
+  />
+
+  <select
+    value={statusFilter}
+    onChange={(e) => {
+      setStatusFilter(e.target.value);
+      setCurrentPage(1);
+    }}
+    style={{
+      ...styles.input,
+      maxWidth: 180,
+    }}
+  >
+    <option value="All">All Status</option>
+    <option value="Active">Active</option>
+    <option value="Suspended">Suspended</option>
+    <option value="Terminated">Terminated</option>
+  </select>
+
+  <select
+    value={sponsorFilter}
+    onChange={(e) => {
+      setSponsorFilter(e.target.value);
+      setCurrentPage(1);
+    }}
+    style={{
+      ...styles.input,
+      maxWidth: 220,
+    }}
+  >
+    {sponsors.map((sponsor) => (
+      <option key={sponsor} value={sponsor}>
+        {sponsor === "All"
+          ? "All Sponsors"
+          : sponsor}
+      </option>
+    ))}
+  </select>
+</div>
 
       {/* TABLE STYLE LIST */}
-      <div style={card}>
-        <table style={table}>
+      <div style={styles.card}>
+        <table style={styles.table}>
           <thead>
-            <tr>
-              <th>Name</th>
-              <th>Sponsor</th>
-              <th>Description</th>
-              <th>Amount</th>
-              <th>Slots</th>
-              <th>Deadline</th>
-              <th>Status</th>
-              <th>Requirements</th>
-              <th>Form</th>
-              <th>Action</th>
-            </tr>
-          </thead>
+  <tr>
+    <th style={styles.th}>Name</th>
+    <th style={styles.th}>Sponsor</th>
+    <th style={styles.th}>Description</th>
+    <th style={styles.th}>Amount</th>
+    <th style={styles.th}>Slots</th>
+    <th style={styles.th}>Deadline</th>
+    <th style={styles.th}>Status</th>
+    <th style={styles.th}>Requirements</th>
+    <th style={styles.th}>Form</th>
+    <th style={styles.th}>Action</th>
+  </tr>
+</thead>
 
           <tbody>
-  {list.map((s) => (
-    <tr key={s.scholarship_id}>
-      <td>{s.scholarship_name}</td>
-      <td>{s.sponsor}</td>
-      <td>{s.description}</td>
-      <td>₱{s.amount}</td>
-      <td>{s.slots}</td>
-      <td>{s.submission_deadline}</td>
+  {paginatedScholarships.map((s, index) => (
+  <tr
+    key={s.scholarship_id}
+    style={
+      ((currentPage - 1) * ITEMS_PER_PAGE + index) % 2 === 0
+        ? styles.rowEven
+        : styles.rowOdd
+    }
+  >
+  <td style={styles.td}>{s.scholarship_name}</td>
+  <td style={styles.td}>{s.sponsor}</td>
+  <td style={styles.td}>{s.description}</td>
+  <td style={styles.td}>₱{s.amount}</td>
+  <td style={styles.td}>{s.slots}</td>
+  <td style={styles.td}>{s.submission_deadline}</td>
 
-      {/* STATUS TOGGLE */}
-      <td>
-        <button
-          onClick={() => toggleStatus(s)}
-          style={{
-            padding: "6px 12px",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-            color: "white",
-            background:
-            s.status === "Active"
-            ? "green"
-            : s.status === "Suspended"
-            ? "orange"
-            : "red",
-          }}
-        >
-          {s.status}
-        </button>
-      </td>
+  <td style={styles.td}>
+    <button
+  onClick={() => toggleStatus(s)}
+  style={{
+    ...styles.badge,
+    background:
+      s.status === "Active"
+        ? "#dcfce7"
+        : s.status === "Suspended"
+        ? "#fef3c7"
+        : "#fee2e2",
+    color:
+      s.status === "Active"
+        ? "#166534"
+        : s.status === "Suspended"
+        ? "#92400e"
+        : "#991b1b",
+    border: "none",
+    cursor: "pointer",
+  }}
+>
+  {s.status}
+</button>
+  </td>
 
-      {/* VIEW REQUIREMENTS */}
-      <td>
-        <button
-          onClick={() =>
-            viewRequirementsModal(s.scholarship_id)
-          }
-          style={btn}
-        >
-          View
-        </button>
-      </td>
-      <td>
-          <button
-            onClick={() => viewForm(s.scholarship_id)}
-            style={btn}
-          >
-          View Form
-          </button>
-        </td>
-      <td>
-        <button
-        onClick={() => editScholarship(s)}
-        style={{
-        padding: "8px 12px",
-        background: "#f59e0b",
-        color: "white",
-        border: "none",
-        borderRadius: "5px",
-        cursor: "pointer",
-        }}
-        >
-        Edit
-        </button>
-         </td>
-          </tr>
+  <td style={styles.td}>
+    <button style={styles.btnAccent} onClick={() => viewRequirementsModal(s.scholarship_id)}>
+      View
+    </button>
+  </td>
+
+  <td style={styles.td}>
+    <button style={styles.btnAccent} onClick={() => viewForm(s.scholarship_id)}>
+      View
+    </button>
+  </td>
+
+  <td style={styles.td}>
+    <button style={styles.btn} onClick={() => editScholarship(s)}>
+      Edit
+    </button>
+  </td>
+</tr>
           ))}
          </tbody>
         </table>
       </div>
 
+      <div
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 20,
+    flexWrap: "wrap",
+    gap: 10,
+  }}
+>
+  <span>
+    Showing{" "}
+    {filteredScholarships.length === 0
+      ? 0
+      : (currentPage - 1) * ITEMS_PER_PAGE + 1}
+    {" - "}
+    {Math.min(
+  currentPage * ITEMS_PER_PAGE,
+  filteredScholarships.length
+)}{" "}
+    of {filteredScholarships.length}
+  </span>
+
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+    }}
+  >
+    <button
+      style={styles.pageButton}
+      disabled={currentPage === 1}
+      onClick={() =>
+        setCurrentPage((page) => page - 1)
+      }
+    >
+      Previous
+    </button>
+
+    <span>
+      Page {totalPages === 0 ? 0 : currentPage} of{" "}
+      {totalPages || 1}
+    </span>
+
+    <button
+      style={styles.pageButton}
+      disabled={
+        currentPage === totalPages ||
+        totalPages === 0
+      }
+      onClick={() =>
+        setCurrentPage((page) => page + 1)
+      }
+    >
+      Next
+    </button>
+  </div>
+</div>
+      
+
 
       {/* REQUIREMENTS VIEW MODAL */}
 {viewOpen && (
-  <div style={overlay}>
-    <div style={modal}>
-      <h2>{editMode ? "Edit Scholarship" : "Create Scholarship"}</h2>
+  <div
+    style={styles.overlay}
+    onClick={closeModal}
+  >
+    <div
+      style={styles.modal}
+      onClick={(e) => e.stopPropagation()}
+    >
 
-      <h3>Application Requirements</h3>
+    <div style={styles.modalHeader}>
+        <h2 style={styles.modalTitle}>
+            {editMode ? "Edit Scholarship" : "Create Scholarship"}
+        </h2>
+
+        <button
+    style={styles.closeButton}
+    onClick={closeModal}
+>
+    ×
+</button>
+    </div>
+
+      <h3 style={styles.sectionTitle}>Application Requirements</h3>
       {viewRequirements.application.length === 0 ? (
         <p>No application requirements.</p>
       ) : (
@@ -585,7 +791,7 @@ const viewForm = async (scholarshipId) => {
 
       <div style={{ marginTop: 20 }}>
         <button
-          style={btn}
+          style={styles.btn}
           onClick={() => setViewOpen(false)}
         >
           Close
@@ -597,14 +803,31 @@ const viewForm = async (scholarshipId) => {
 
 {/* VIEW FORM MODAL */}
 {viewFormOpen && (
-  <div style={overlay}>
-    <div style={modal}>
-      <h2>{formData.title}</h2>
+  <div
+    style={styles.overlay}
+    onClick={closeModal}
+  >
+    <div
+      style={styles.modal}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div style={styles.modalHeader}>
+    <h2 style={styles.modalTitle}>
+        {formData.title}
+    </h2>
 
-      <h3>Terms & Conditions</h3>
+    <button
+        style={styles.closeButton}
+        onClick={closeModal}
+    >
+        ×
+    </button>
+</div>
+
+      <h3 style={styles.sectionTitle}>Terms & Conditions</h3>
       <p>{formData.terms}</p>
 
-      <h3>Form Fields</h3>
+      <h3 style={styles.sectionTitle}>Form Fields</h3>
 
       {formData.fields.length === 0 ? (
         <p>No fields found.</p>
@@ -630,9 +853,9 @@ const viewForm = async (scholarshipId) => {
 
       <div style={{ marginTop: 20 }}>
         <button
-          style={btn}
-          onClick={() => setViewFormOpen(false)}
-        >
+  style={styles.btn}
+  onClick={closeModal}
+>
           Close
         </button>
       </div>
@@ -642,30 +865,59 @@ const viewForm = async (scholarshipId) => {
 
       {/* MODAL (UNCHANGED LOGIC UI NOT TOUCHED) */}
       {open && (
-        <div style={overlay}>
-          <div style={modal}>
-            <h2>Create Scholarship</h2>
+  <div
+    style={styles.overlay}
+    onClick={closeModal}
+  >
+    <div
+      style={styles.modal}
+      onClick={(e) => e.stopPropagation()}
+    >
+            <div style={styles.modalHeader}>
+    <h2 style={styles.modalTitle}>
+        {editMode
+            ? "Edit Scholarship"
+            : "Create Scholarship"}
+    </h2>
 
-            <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} style={input} />
-            <input placeholder="Sponsor" value={sponsor} onChange={(e) => setSponsor(e.target.value)} style={input} />
-            <textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} style={input} />
-            <input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} style={input} />
+    <button
+        style={styles.closeButton}
+        onClick={closeModal}
+    >
+        ×
+    </button>
+</div>
+
+<div style={styles.section}>
+  <h3 style={styles.sectionTitle}>
+    Scholarship Information
+  </h3>
+            <div style={styles.grid2}>
+            <input placeholder="Scholarship Name" value={name} onChange={(e) => setName(e.target.value)} style={styles.input} />
+            <input placeholder="Sponsor" value={sponsor} onChange={(e) => setSponsor(e.target.value)} style={styles.input} />
+            <textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} style={styles.textarea} />
+            <input placeholder="Amount For Each Grantee" value={amount} onChange={(e) => setAmount(e.target.value)} style={styles.input} />
             <input
   type="number"
-  placeholder="Number of Slots"
+  placeholder="Amount Of Slots Available"
   value={slots}
   onChange={(e) => setSlots(e.target.value)}
-  style={input}
+  style={styles.input}
 />
-            <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} style={input} />
+            <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} style={styles.input} />
+</div></div>
 
-            <h3>Requirements Checklist</h3>
+
+           <div style={styles.section}>
+  <h3 style={styles.sectionTitle}>
+    Requirements
+  </h3>
 
             <h4>Application</h4>
 
             <button
   type="button"
-  style={smallBtn}
+  style={styles.smallBtn}
   onClick={() => setShowAppForm(!showAppForm)}
 >
   + New Requirement
@@ -677,13 +929,13 @@ const viewForm = async (scholarshipId) => {
       placeholder="Requirement Name"
       value={newAppName}
       onChange={(e) => setNewAppName(e.target.value)}
-      style={input}
+      style={styles.input}
     />
 
     <select
       value={newAppType}
       onChange={(e) => setNewAppType(e.target.value)}
-      style={input}
+      style={styles.input}
     >
       <option>Document</option>
       <option>Grade</option>
@@ -693,7 +945,7 @@ const viewForm = async (scholarshipId) => {
 
     <button
       type="button"
-      style={btn}
+      style={styles.btn}
       onClick={addApplicationRequirement}
     >
       Save Requirement
@@ -701,7 +953,7 @@ const viewForm = async (scholarshipId) => {
   </>
 )}
             {appReq.map((r) => (
-              <label key={r.application_requirement_id} style={checkItem}>
+              <label key={r.application_requirement_id} style={styles.checkItem}>
                 <input
   type="checkbox"
   checked={selectedReq.some(
@@ -720,7 +972,7 @@ const viewForm = async (scholarshipId) => {
             <h4>Eligibility</h4>
             <button
   type="button"
-  style={smallBtn}
+  style={styles.smallBtn}
   onClick={() => setShowEligForm(!showEligForm)}
 >
   + New Requirement
@@ -732,13 +984,13 @@ const viewForm = async (scholarshipId) => {
       placeholder="Requirement Name"
       value={newEligName}
       onChange={(e) => setNewEligName(e.target.value)}
-      style={input}
+      style={styles.input}
     />
 
     <select
       value={newEligType}
       onChange={(e) => setNewEligType(e.target.value)}
-      style={input}
+      style={styles.input}
     >
       <option>Status</option>
       <option>Other</option>
@@ -746,7 +998,7 @@ const viewForm = async (scholarshipId) => {
 
     <button
       type="button"
-      style={btn}
+      style={styles.btn}
       onClick={addEligibilityRequirement}
     >
       Save Requirement
@@ -754,7 +1006,7 @@ const viewForm = async (scholarshipId) => {
   </>
 )}
             {eligReq.map((r) => (
-              <label key={r.eligibility_requirement_id} style={checkItem}>
+              <label key={r.eligibility_requirement_id} style={styles.checkItem}>
                 <input
   type="checkbox"
   checked={selectedReq.some(
@@ -770,22 +1022,32 @@ const viewForm = async (scholarshipId) => {
               </label>
             ))}
 
-            <h3>Form Builder</h3>
+</div>
 
-            <input placeholder="Form Title" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} style={input} />
 
-            <textarea placeholder="Terms & Conditions" value={terms} onChange={(e) => setTerms(e.target.value)} style={input} />
 
+            <div style={styles.section}>
+  <h3 style={styles.sectionTitle}>
+    Application Form
+  </h3>
+            
+            <input placeholder="Form Title" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} style={styles.textarea} />
+
+            <textarea placeholder="Terms & Conditions" value={terms} onChange={(e) => setTerms(e.target.value)} style={styles.textarea} />
+            
             <h4>Fields Preview</h4>
             {fields.map((f, i) => (
+              
   <div
     key={i}
     style={{
-      ...fieldPreview,
+      ...styles.fieldPreview,
       display: "flex",
       justifyContent: "space-between",
       alignItems: "center",
     }}
+
+    
   >
     <div>
       <b>{f.label}</b> ({f.type})
@@ -808,10 +1070,10 @@ const viewForm = async (scholarshipId) => {
     </button>
   </div>
 ))}
+            <div style={styles.fieldBuilder}>
+            <input placeholder="Field Label" value={fieldLabel} onChange={(e) => setFieldLabel(e.target.value)} style={styles.input} />
 
-            <input placeholder="Field Label" value={fieldLabel} onChange={(e) => setFieldLabel(e.target.value)} style={input} />
-
-            <select value={fieldType} onChange={(e) => setFieldType(e.target.value)} style={input}>
+            <select value={fieldType} onChange={(e) => setFieldType(e.target.value)} style={styles.input}>
               <option value="text">Text</option>
               <option value="number">Number</option>
               <option value="date">Date</option>
@@ -823,17 +1085,11 @@ const viewForm = async (scholarshipId) => {
               Required
             </label>
 
-            <button onClick={addField} style={smallBtn}>+ Add Field</button>
+            <button onClick={addField} style={styles.smallBtn}>+ Add Field</button>
+            </div></div>
 
-            <div style={actions}>
-              <button
-  onClick={() => {
-    setOpen(false);
-    setEditMode(false);
-    setEditingId(null);
-    reset();
-  }}
->
+            <div style={styles.actions}>
+              <button onClick={closeModal} style={styles.btn}>
   Cancel
 </button>
 
@@ -843,7 +1099,7 @@ const viewForm = async (scholarshipId) => {
       ? updateScholarship
       : createScholarship
   }
-  style={btn}
+  style={styles.btn}
 >
   {editMode ? "Update" : "Save"}
 </button>
@@ -854,47 +1110,352 @@ const viewForm = async (scholarshipId) => {
     </div>
   );
 }
+const styles = {
+  page: {
+    padding: 24,
+    fontFamily: "Inter, sans-serif",
+    background: "#f5f6f8",
+    minHeight: "100vh",
+    color: "#1f2937",
+  },
 
-/* TABLE STYLE ADDED */
-const table = {
-  width: "100%",
-  borderCollapse: "collapse",
-};
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
 
-const page = { padding: 20, fontFamily: "Arial", background: "#f5f6f8", minHeight: "100vh" };
-const header = { display: "flex", justifyContent: "space-between" };
-const card = { background: "white", padding: 20, marginTop: 20 };
+  titleBlock: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+  },
 
-const overlay = {
+  title: {
+    margin: 0,
+    color: "#475c6c",
+    fontSize: 24,
+    fontWeight: 700,
+  },
+
+  subtitle: {
+    margin: 0,
+    fontSize: 13,
+    color: "#8a8583",
+  },
+
+  btnPrimary: {
+    padding: "10px 14px",
+    background: "#475c6c",
+    color: "white",
+    border: "none",
+    borderRadius: 8,
+    cursor: "pointer",
+    fontSize: 13,
+  },
+
+  btn: {
+  padding: "8px 12px",
+  background: "#475c6c",
+  color: "#fff",
+  border: "none",
+  borderRadius: 8,
+  cursor: "pointer",
+  fontSize: 13,
+  fontWeight: 500,
+},
+
+  btnAccent: {
+    padding: "8px 12px",
+    background: "#eed7a1",
+    color: "#1f2937",
+    border: "none",
+    borderRadius: 8,
+    cursor: "pointer",
+    fontSize: 13,
+  },
+
+  btnDanger: {
+    padding: "8px 12px",
+    background: "#8a8583",
+    color: "white",
+    border: "none",
+    borderRadius: 8,
+    cursor: "pointer",
+    fontSize: 13,
+  },
+
+  card: {
+    background: "#ffffff",
+    padding: 20,
+    borderRadius: 12,
+    boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
+    overflowX: "auto",
+    scrollbarWidth: "thin",
+  },
+
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    minWidth: 900,
+  },
+
+  th: {
+    background: "#475c6c",
+    color: "#fff",
+    padding: "14px",
+    textAlign: "left",
+    fontSize: 12,
+    textTransform: "uppercase",
+  },
+
+  td: {
+    padding: "14px",
+    borderBottom: "1px solid #eee",
+    fontSize: 13,
+  },
+
+  rowEven: {
+    background: "#fff",
+  },
+
+  rowOdd: {
+    background: "#f9fafb",
+  },
+
+  badge: {
+    padding: "6px 10px",
+    borderRadius: 20,
+    fontSize: 12,
+    fontWeight: 600,
+    display: "inline-block",
+  },
+
+  overlay: {
   position: "fixed",
   inset: 0,
-  background: "rgba(0,0,0,0.5)",
+  background: "rgba(71, 92, 108, 0.45)",
+  backdropFilter: "blur(4px)",
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
-};
-
-const modal = {
-  background: "white",
   padding: 20,
-  width: 650,
+  zIndex: 9999,
+},
+
+  modal: {
+  width: "100%",
+  maxWidth: 900,
   maxHeight: "90vh",
   overflowY: "auto",
-};
+ 
 
-const input = { width: "100%", padding: 8, marginBottom: 10 };
+  background: "#fff",
+  borderRadius: 18,
 
-const btn = { padding: 10, background: "#2563eb", color: "white", border: "none" };
-const smallBtn = { padding: 6, background: "green", color: "white", border: "none" };
-const actions = { display: "flex", justifyContent: "space-between", marginTop: 10 };
+  padding: 30,
 
-const checkItem = { display: "block", padding: "6px" };
+  boxShadow: "0 20px 60px rgba(0,0,0,.18)",
 
-const fieldPreview = {
-  padding: "10px",
-  marginBottom: "6px",
-  background: "#f9fafb",
+  display: "flex",
+  flexDirection: "column",
+  gap: 18,
+  scrollbarWidth: "none",
+},
+
+modalHeader: {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  borderBottom: "2px solid #eed7a1",
+  paddingBottom: 12,
+},
+
+fieldBuilder:{
+display:"grid",
+gridTemplateColumns:"2fr 1fr auto auto",
+gap:12,
+alignItems:"center",
+},
+
+modalTitle: {
+  margin: 0,
+  color: "#475c6c",
+  fontSize: 24,
+  fontWeight: 700,
+},
+
+closeButton: {
+  width: 36,
+  height: 36,
+
+  border: "none",
+  borderRadius: 10,
+
+  background: "#f3f4f6",
+
+  cursor: "pointer",
+
+  fontSize: 20,
+  fontWeight: "bold",
+
+  color: "#475c6c",
+},
+
+  input:{
+width:"100%",
+color: "#475c6c",
+padding:"14px 16px",
+background:"#f8fafc",
+border:"1px solid #d8dee4",
+borderRadius:10,
+fontSize:14,
+transition:"all .2s",
+boxSizing:"border-box",
+},
+
+textarea:{
+width:"100%",
+minHeight:120,
+padding:"14px 16px",
+color: "#475c6c",
+background:"#f8fafc",
+
+border:"1px solid #d8dee4",
+
+borderRadius:10,
+
+fontSize:14,
+
+resize:"vertical",
+
+boxSizing:"border-box",
+},
+
+requirementBox: {
+  background: "#fafafa",
   border: "1px solid #e5e7eb",
-  borderRadius: "6px",
-  fontSize: "14px",
+  borderRadius: 10,
+  padding: 12,
+},
+
+fieldPreview: {
+  padding: 14,
+  border: "1px solid #e5e7eb",
+  borderRadius: 10,
+  background: "#fafafa",
+  marginBottom: 10,
+},
+
+actions: {
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: 12,
+  marginTop: 20,
+  borderTop: "1px solid #eee",
+  paddingTop: 20,
+},
+
+grid2:{
+display:"grid",
+gridTemplateColumns:"1fr",
+gap:16,
+},
+
+  pageButton: {
+  padding: "8px 14px",
+  border: "1px solid #475c6c",
+  borderRadius: 8,
+  background: "#475c6c",
+  color: "#fff",
+  cursor: "pointer",
+  fontSize: 13,
+},
+
+section: {
+  background: "#ffffff",
+  border: "1px solid #e8e8e8",
+  borderLeft: "5px solid #eed7a1",
+  borderRadius: 14,
+  padding: 24,
+  marginBottom: 22,
+
+  display: "flex",
+  flexDirection: "column",
+  gap: 16,
+
+  boxShadow: "0 6px 18px rgba(0,0,0,.05)",
+},
+
+sectionTitle:{
+margin:0,
+fontSize:18,
+fontWeight:700,
+color:"#475c6c",
+display:"flex",
+alignItems:"center",
+gap:8,
+},
+
+checkItem:{
+display:"flex",
+alignItems:"center",
+gap:10,
+
+padding:"10px 12px",
+
+border:"1px solid #ececec",
+
+borderRadius:8,
+
+background:"#fafafa",
+
+marginBottom:8,
+},
+smallBtn:{
+padding:"8px 14px",
+
+background:"#eed7a1",
+
+color:"#475c6c",
+
+border:"none",
+
+borderRadius:8,
+
+fontWeight:600,
+
+cursor:"pointer",
+
+marginBottom:14,
+},
+fieldPreview:{
+display:"flex",
+justifyContent:"space-between",
+alignItems:"center",
+
+padding:"14px 18px",
+
+border:"1px solid #ececec",
+
+background:"#ffffff",
+
+borderRadius:10,
+
+boxShadow:"0 3px 8px rgba(0,0,0,.04)",
+},
+
+searchInput: {
+  width: "100%",
+  maxWidth: 420,
+  padding: "12px 16px",
+  borderRadius: 10,
+  border: "1px solid #d1d5db",
+  background: "#fff",
+  fontSize: 14,
+  outline: "none",
+  boxSizing: "border-box",
+  color: "#475c6c",
+},
 };

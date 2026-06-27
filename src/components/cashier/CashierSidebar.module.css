@@ -15,6 +15,14 @@
   flex-direction: column;
 
   border-right: 1px solid rgba(255, 255, 255, 0.06);
+  overflow-y: auto;
+
+  crollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge Legacy */
+}
+
+.sidebar::-webkit-scrollbar {
+  display: none; /* Chrome, Edge, Safari */
 }
 
 /* ================= LOGO ================= */

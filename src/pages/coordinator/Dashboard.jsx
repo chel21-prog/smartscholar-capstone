@@ -1950,4 +1950,10 @@ pageButton: {
   color: "#fff",
   cursor: "pointer",
 },
+ title: {
+    margin: 0,
+    fontSize: 28,
+    fontWeight: 700,
+    color: "#475c6c",
+  },
 };

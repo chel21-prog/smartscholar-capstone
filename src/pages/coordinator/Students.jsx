@@ -14,6 +14,12 @@ const [scholarships, setScholarships] = useState([]);
 const [selectedScholarship, setSelectedScholarship] = useState("");
 
 const [academicSettings, setAcademicSettings] = useState(null);
+const ITEMS_PER_PAGE = 10;
+
+const [search, setSearch] = useState("");
+const [statusFilter, setStatusFilter] = useState("All");
+const [courseFilter, setCourseFilter] = useState("All");
+const [currentPage, setCurrentPage] = useState(1);
 
 const [remarks, setRemarks] = useState("");
 // these are REQUIRED for insert
@@ -159,12 +165,130 @@ const loadAcademicSettings = async () => {
   setSelectedStudent(null);
 };
 
+const courses = [
+  "All",
+  ...new Set(students.map((s) => s.course).filter(Boolean)),
+];
+
+const filteredStudents = students.filter((s) => {
+  const keyword = search.toLowerCase();
+
+  const matchesSearch =
+    (s.school_id || "").toLowerCase().includes(keyword) ||
+    (s.users?.first_name || "").toLowerCase().includes(keyword) ||
+    (s.users?.last_name || "").toLowerCase().includes(keyword) ||
+    (s.users?.email || "").toLowerCase().includes(keyword) ||
+    (s.course || "").toLowerCase().includes(keyword) ||
+    (s.year_level || "").toString().includes(keyword) ||
+    (s.gender || "").toLowerCase().includes(keyword) ||
+    (s.ethnicity || "").toLowerCase().includes(keyword) ||
+    (s.contact_number || "").toLowerCase().includes(keyword) ||
+    (s.status || "").toLowerCase().includes(keyword);
+
+  const matchesStatus =
+    statusFilter === "All" ||
+    s.status === statusFilter;
+
+  const matchesCourse =
+    courseFilter === "All" ||
+    s.course === courseFilter;
+
   return (
-    <div style={page}>
-      <h1 style={title}>Students</h1>
+    matchesSearch &&
+    matchesStatus &&
+    matchesCourse
+  );
+});
+
+const totalPages = Math.ceil(
+  filteredStudents.length / ITEMS_PER_PAGE
+);
+
+const paginatedStudents = filteredStudents.slice(
+  (currentPage - 1) * ITEMS_PER_PAGE,
+  currentPage * ITEMS_PER_PAGE
+);
+  return (
+    <div style={styles.page}>
+      <div style={styles.header}>
+  <div>
+    <h1 style={styles.title}>Students</h1>
+    <p style={styles.subtitle}>
+      Manage student records, enrollment status, and scholarship assignments.
+    </p>
+  </div>
+  
+</div>
+<div
+  style={{
+    display: "flex",
+    gap: 15,
+    marginBottom: 20,
+    flexWrap: "wrap",
+    alignItems: "center",
+  }}
+>
+  <input
+    type="text"
+    placeholder="Search students..."
+    value={search}
+    onChange={(e) => {
+      setSearch(e.target.value);
+      setCurrentPage(1);
+    }}
+    style={{
+      ...styles.input,
+      maxWidth: 320,
+      color: "#475c6c",
+    }}
+  />
+
+  <select
+    value={statusFilter}
+    onChange={(e) => {
+      setStatusFilter(e.target.value);
+      setCurrentPage(1);
+    }}
+    style={{
+      ...styles.input,
+      maxWidth: 180,
+      color: "#475c6c",
+    }}
+  >
+    <option value="All">All Status</option>
+    <option value="Enrolled">Enrolled</option>
+    <option value="Graduated">Graduated</option>
+    <option value="Dropped">Dropped</option>
+    <option value="Inactive">Inactive</option>
+  </select>
+
+  <select
+    value={courseFilter}
+    onChange={(e) => {
+      setCourseFilter(e.target.value);
+      setCurrentPage(1);
+    }}
+    style={{
+      ...styles.input,
+      maxWidth: 220,
+      color: "#475c6c",
+    }}
+  >
+    {courses.map((course) => (
+      <option
+        key={course}
+        value={course}
+      >
+        {course === "All"
+          ? "All Courses"
+          : course}
+      </option>
+    ))}
+  </select>
+</div>
       {openGrant && (
-  <div style={overlay}>
-    <div style={modal}>
+  <div style={styles.overlay}>
+    <div style={styles.modal}>
       <h2>Grant Scholarship</h2>
 
       <p>
@@ -176,7 +300,7 @@ const loadAcademicSettings = async () => {
       </p>
 
       <select
-        style={input}
+        style={styles.input}
         value={selectedScholarship}
         onChange={(e) => setSelectedScholarship(e.target.value)}
       >
@@ -196,7 +320,7 @@ const loadAcademicSettings = async () => {
   <b>Semester:</b> {academicSettings?.semester}
 </p>
 
-      <button style={statusBtn} onClick={grantScholarship}>
+      <button style={styles.statusBtn} onClick={grantScholarship}>
         Grant
       </button>
 
@@ -209,74 +333,95 @@ const loadAcademicSettings = async () => {
       {loading ? (
         <p>Loading...</p>
       ) : (
-        <div style={tableWrapper}>
-          <table style={table}>
-            <thead>
+        <div style={styles.card}>
+          <table style={styles.table}>
+            <thead style={styles.thead}>
               <tr>
-                <th>School ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Course</th>
-                <th>Year</th>
-                <th>Gender</th>
-                <th>Ethnicity</th>
-                <th>Contact</th>
-                <th>Enrollement Status</th>
-                <th>Remarks</th>
-                <th>Action</th>
+                <th style={styles.th}>School ID</th>
+                <th style={styles.th}>Name</th>
+                <th style={styles.th}>Email</th>
+                <th style={styles.th}>Course</th>
+                <th style={styles.th}>Year</th>
+                <th style={styles.th}>Gender</th>
+                <th style={styles.th}>Ethnicity</th>
+                <th style={styles.th}>Contact</th>
+                <th style={styles.th}>Enrollement Status</th>
+                <th style={styles.th}>Remarks</th>
+                <th style={styles.th}>Action</th>
               </tr>
             </thead>
 
             <tbody>
-              {students.map((s) => (
-                <tr key={s.student_id}>
-                  <td>{s.school_id}</td>
-                  <td>{s.users?.first_name} {s.users?.last_name}</td>
-                  <td>{s.users?.email}</td>
-                  <td>{s.course}</td>
-                  <td>{s.year_level}</td>
-                  <td>{s.gender}</td>
-                  <td>{s.ethnicity}</td>
-                  <td>{s.contact_number}</td>
+              {paginatedStudents.map((s, index) => (
+                <tr
+  key={s.student_id}
+  style={
+    index % 2 === 0
+      ? styles.rowEven
+      : styles.rowOdd
+  }
+>
+                  <td style={styles.td}>{s.school_id}</td>
+                  <td style={styles.td}>{s.users?.first_name} {s.users?.last_name}</td>
+                  <td style={styles.td}>{s.users?.email}</td>
+                  <td style={styles.td}>{s.course}</td>
+                  <td style={styles.td}>{s.year_level}</td>
+                  <td style={styles.td}>{s.gender}</td>
+                  <td style={styles.td}>{s.ethnicity}</td>
+                  <td style={styles.td}>{s.contact_number}</td>
 
                   {/* CLICKABLE STATUS */}
-                  <td>
+                  <td style={styles.td}>
                     <button
                       onClick={() => updateStatus(s.student_id, s.status)}
                       style={{
-                        ...statusBtn,
-                        background:
-                          s.status === "Enrolled"
-                            ? "#16a34a"
-                            : s.status === "Graduated"
-                            ? "#2563eb"
-                            : s.status === "Dropped"
-                            ? "#dc2626"
-                            : "#6b7280",
-                      }}
+  ...styles.badge,
+  background:
+    s.status === "Enrolled"
+      ? "#dcfce7"
+      : s.status === "Graduated"
+      ? "#dbeafe"
+      : s.status === "Dropped"
+      ? "#fee2e2"
+      : "#f3f4f6",
+
+  color:
+    s.status === "Enrolled"
+      ? "#166534"
+      : s.status === "Graduated"
+      ? "#1d4ed8"
+      : s.status === "Dropped"
+      ? "#991b1b"
+      : "#475c6c",
+
+  border: "none",
+  cursor: "pointer",
+}}
                     >
                       {s.status}
                     </button>
                   </td>
 
                   {/* AUTO-SAVE REMARKS */}
-                  <td>
-                    <input
-                      value={s.remarks || ""}
-                      onChange={(e) =>
-                        updateRemarks(s.student_id, e.target.value)
-                      }
-                      style={input}
-                      placeholder="Add remark..."
-                    />
+                  <td style={styles.td}>
+                    <textarea
+  value={s.remarks || ""}
+  onChange={(e) =>
+    updateRemarks(s.student_id, e.target.value)
+  }
+  placeholder="None"
+  style={styles.remarkInput}
+/>
                   </td>
-                  <td>
+                  <td style={styles.td}>
                     <button
                       style={{
                       padding: "6px 10px",
                       border: "none",
                       borderRadius: 6,
-                      background: "#f59e0b",
+                      background: "#475c6c",
+                      fontWeight: 600,
+transition: ".2s",
                       color: "white",
                       cursor: "pointer",
                       }}
@@ -292,69 +437,231 @@ const loadAcademicSettings = async () => {
               ))}
             </tbody>
           </table>
+          
         </div>
+        
       )}
+      <div
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 20,
+    flexWrap: "wrap",
+    gap: 10,
+  }}
+>
+  <span>
+    Showing{" "}
+    {filteredStudents.length === 0
+      ? 0
+      : (currentPage - 1) * ITEMS_PER_PAGE + 1}
+    {" - "}
+    {Math.min(
+      currentPage * ITEMS_PER_PAGE,
+      filteredStudents.length
+    )}{" "}
+    of {filteredStudents.length}
+  </span>
+
+  <div
+    style={{
+      display: "flex",
+      gap: 8,
+      alignItems: "center",
+    }}
+  >
+    <button
+      style={{
+  ...styles.statusBtn,
+  opacity: currentPage === 1 ? .5 : 1,
+  cursor: currentPage === 1 ? "not-allowed" : "pointer",
+}}
+      disabled={currentPage === 1}
+      onClick={() =>
+        setCurrentPage((p) => p - 1)
+      }
+    >
+      Previous
+    </button>
+
+    <span>
+      Page {totalPages === 0 ? 0 : currentPage} of{" "}
+      {totalPages || 1}
+    </span>
+
+    <button
+      style={{
+  ...styles.statusBtn,
+  opacity:
+    currentPage === totalPages || totalPages === 0
+      ? .5
+      : 1,
+  cursor:
+    currentPage === totalPages || totalPages === 0
+      ? "not-allowed"
+      : "pointer",
+}}
+      disabled={
+        currentPage === totalPages ||
+        totalPages === 0
+      }
+      onClick={() =>
+        setCurrentPage((p) => p + 1)
+      }
+    >
+      Next
+    </button>
+  </div>
+</div>
     </div>
   );
 }
 
-/* ===== STYLES ===== */
+const styles = {
+  page: {
+    minHeight: "100vh",
+    padding: 24,
+    background: "#f5f6f8",
+    fontFamily: "Inter, sans-serif",
+    color: "#475c6c",
+  },
 
-const page = {
-  padding: 20,
-  fontFamily: "Arial",
-  background: "#f5f6f8",
-  minHeight: "100vh",
-};
+  header: {
+    marginBottom: 24,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
 
-const title = {
-  marginBottom: 20,
-};
+  title: {
+    margin: 0,
+    fontSize: 28,
+    fontWeight: 700,
+    color: "#475c6c",
+  },
 
-const tableWrapper = {
-  background: "white",
-  padding: 10,
-  borderRadius: 10,
-  overflowX: "auto",
-};
+  subtitle: {
+    marginTop: 6,
+    color: "#8a8583",
+    fontSize: 14,
+  },
 
-const table = {
+  card: {
+    background: "#fff",
+    borderRadius: 16,
+    padding: 10,
+    boxShadow: "0 8px 24px rgba(0,0,0,.06)",
+    overflowX: "auto",
+  },
+
+  table: {
   width: "100%",
   borderCollapse: "collapse",
-};
+  minWidth: 1050, // or even 1000
+},
 
-const statusBtn = {
-  padding: "6px 10px",
-  border: "none",
-  borderRadius: 6,
-  color: "white",
-  cursor: "pointer",
+  thead: {
+    background: "#475c6c",
+  },
+
+  th: {
+  padding: "10px 12px",
+  color: "#fff",
+  textAlign: "left",
   fontSize: 12,
-};
+  fontWeight: 600,
+  whiteSpace: "nowrap",
+},
 
-const input = {
-  width: "100%",
-  padding: 6,
-  border: "1px solid #ddd",
-  borderRadius: 6,
-};
+  td: {
+  padding: "8px 12px",
+  borderBottom: "1px solid #ececec",
+  color: "#475c6c",
+  fontSize: 13,
+  verticalAlign: "middle",
+},
 
-const overlay = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  width: "100%",
-  height: "100%",
-  background: "rgba(0,0,0,0.5)",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  zIndex: 999,
-};
+  badge: {
+  padding: "5px 10px",
+  borderRadius: 999,
+  fontSize: 11,
+  fontWeight: 600,
+},
 
-const modal = {
-  background: "white",
-  padding: 20,
-  borderRadius: 10,
-  width: "400px",
+  input: {
+    width: "100%",
+    padding: "10px 14px",
+    border: "1px solid #d9d9d9",
+    borderRadius: 8,
+    background: "#fff",
+    color: "#475c6c",
+    outline: "none",
+    fontSize: 14,
+    boxSizing: "border-box",
+  },
+
+  overlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(71,92,108,.35)",
+    backdropFilter: "blur(4px)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 999,
+  },
+
+  modal: {
+    width: "100%",
+    maxWidth: 520,
+    background: "#fff",
+    borderRadius: 16,
+    padding: 28,
+    boxShadow: "0 20px 40px rgba(0,0,0,.15)",
+  },
+
+  statusBtn: {
+  padding: "9px 16px",
+  background: "#475c6c",
+  color: "#fff",
+  border: "none",
+  borderRadius: 8,
+  cursor: "pointer",
+  fontWeight: 600,
+  transition: ".2s",
+},
+rowEven: {
+  background: "#fff",
+},
+
+rowOdd: {
+  background: "#f9fafb",
+},
+remarkInput: {
+  width: 180,
+  minWidth: 160,
+  maxWidth: 180,
+
+  minHeight: 72,
+  maxHeight: 72,
+
+  padding: "8px 10px",
+
+  fontSize: 12,
+
+  resize: "none",
+  background: "#fff",
+  color: "#475c6c",
+  overflowY: "auto",
+  overflowX: "hidden",
+
+  scrollbarWidth: "none",
+  msOverflowStyle: "none",
+
+  border: "1px solid #d9d9d9",
+  borderRadius: 8,
+
+  boxSizing: "border-box",
+},
 };

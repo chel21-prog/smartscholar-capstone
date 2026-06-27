@@ -8,6 +8,7 @@ const [open, setOpen] = useState(false);
   return (
     <>
       {/* FLOATING BUTTON (ONLY MOBILE + CLOSED) */}
+      
 <button
   className={styles.floatingBtn}
   onClick={() => setOpen(true)}
