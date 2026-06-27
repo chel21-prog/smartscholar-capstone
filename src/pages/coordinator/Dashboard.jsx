@@ -1044,15 +1044,15 @@ const totalScholarships = scholarStats.length;
       <div style={styles.tableContainer}>
         <table style={styles.table}>
           <thead>
-            <tr>
-              <th>School ID</th>
-              <th>Student</th>
-              <th>Scholarship</th>
-              <th>Status</th>
-              <th>Date</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
+  <tr>
+    <th style={styles.th}>School ID</th>
+    <th style={styles.th}>Student</th>
+    <th style={styles.th}>Scholarship</th>
+    <th style={styles.th}>Status</th>
+    <th style={styles.th}>Date</th>
+    <th style={styles.th}>Actions</th>
+  </tr>
+</thead>
 
           <tbody>
 {paginatedApplications.map((a,index)=>(
@@ -1064,17 +1064,17 @@ const totalScholarships = scholarStats.length;
             : "#f9fafb"
     }}
 >
-                <td>{a.students?.school_id}</td>
+                <td style={styles.td}>{a.students?.school_id}</td>
 
-<td>
+<td style={styles.td}>
   {a.students?.users?.first_name}{" "}
   {a.students?.users?.middle_name
     ? a.students.users.middle_name.charAt(0) + ". "
     : ""}
   {a.students?.users?.last_name}
 </td>
-                <td>{a.scholarships?.scholarship_name}</td>
-                <td>
+                <td style={styles.td}>{a.scholarships?.scholarship_name}</td>
+                <td style={styles.td}>
                   <span
                     style={{
                       ...styles.badge,
@@ -1095,7 +1095,7 @@ const totalScholarships = scholarStats.length;
                     {a.status}
                   </span>
                 </td>
-                <td>
+                <td style={styles.td}>
                   {new Date(a.application_date).toLocaleDateString()}
                 </td>
 
@@ -1924,18 +1924,18 @@ table: {
 th: {
   background: "#475c6c",
   color: "#fff",
-  padding: "14px 16px",
+  padding: "16px 18px",
   textAlign: "left",
   fontWeight: 600,
-  position: "sticky",
-  top: 0,
-  zIndex: 2,
+  whiteSpace: "nowrap",
 },
+
 td: {
-  textAlign: "center",
-  padding: "14px 16px",
+  padding: "16px 18px",
   borderBottom: "1px solid #eef2f7",
   color: "#374151",
+  whiteSpace: "nowrap",
+  verticalAlign: "middle",
 },
 actions: {
   display: "flex",
