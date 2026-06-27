@@ -11,19 +11,37 @@ export default function NotificationBell() {
   let channel;
 
   const initialize = async () => {
+    // Get logged-in user
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const { data: dbUser } = await supabase
+      .from("users")
+      .select("user_id")
+      .eq("auth_id", user.id)
+      .single();
+
+    if (!dbUser) return;
+
     await loadNotifications();
 
     channel = supabase
-      .channel("student-notifications")
+      .channel(`notifications-${dbUser.user_id}`)
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "notifications",
         },
-        () => {
-          loadNotifications();
+        (payload) => {
+          // Only reload if this notification belongs to this user
+          if (payload.new.user_id === dbUser.user_id) {
+            loadNotifications();
+          }
         }
       )
       .subscribe();
@@ -48,14 +66,35 @@ export default function NotificationBell() {
   };
 }, []);
 
-  const loadNotifications = async () => {
-  // Replace this later with your logged-in user's user_id
-  const userId = 59;
+const loadNotifications = async () => {
+  // Get the currently logged-in Supabase user
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
+  if (authError || !user) {
+    console.error("No authenticated user.", authError);
+    return;
+  }
+
+  // Get your application's user_id from the users table
+  const { data: dbUser, error: userError } = await supabase
+    .from("users")
+    .select("user_id")
+    .eq("auth_id", user.id)
+    .single();
+
+  if (userError || !dbUser) {
+    console.error("Unable to find user record.", userError);
+    return;
+  }
+
+  // Load notifications for this user
   const { data, error } = await supabase
     .from("notifications")
     .select("*")
-    .eq("user_id", userId)
+    .eq("user_id", dbUser.user_id)
     .order("created_at", { ascending: false });
 
   if (error) {
