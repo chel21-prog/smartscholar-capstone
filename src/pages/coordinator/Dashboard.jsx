@@ -745,7 +745,7 @@ const totalScholarships = scholarStats.length;
     <div style={styles.container}>
       <div style={styles.header}>
   <h1 style={styles.title}>
-    Coordinator Dashboard
+    Dashboard
   </h1>
 
   <div style={styles.headerRight}>
@@ -1701,8 +1701,8 @@ const styles = {
 
 headerRight: {
   display: "flex",
-  alignItems: "center",
-  gap: 20,
+  alignItems: "right",
+  gap: 10,
 },
 
 cardGrid: {
