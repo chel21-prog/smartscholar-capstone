@@ -257,8 +257,10 @@ await load();
       });
 
     if (notifError) {
-      console.error(notifError);
-    }
+  console.error("Notification insert failed:", notifError);
+  alert(JSON.stringify(notifError));
+  return;
+}
   }
 
   setApplications((prev) =>
@@ -498,10 +500,13 @@ const addFooter = (doc, footerImage) => {
     ...styles.actionBtn,
     background: "#dc2626",
   }}
-  onClick={() => openRejectModal(a)}
+  onClick={() => {
+    console.log("Reject button clicked");
+    openRejectModal(a);
+  }}
 >
-                      Reject
-                    </button>
+  Reject
+</button>
                   </>
                 )}
 
