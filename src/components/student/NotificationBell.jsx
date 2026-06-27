@@ -8,33 +8,63 @@ export default function NotificationBell() {
   const boxRef = useRef();
 
   useEffect(() => {
-    loadNotifications();
+  let channel;
 
-    function handleClick(e) {
-      if (boxRef.current && !boxRef.current.contains(e.target)) {
-        setOpen(false);
-      }
+  const initialize = async () => {
+    await loadNotifications();
+
+    channel = supabase
+      .channel("student-notifications")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+        },
+        () => {
+          loadNotifications();
+        }
+      )
+      .subscribe();
+  };
+
+  initialize();
+
+  const handleClick = (e) => {
+    if (boxRef.current && !boxRef.current.contains(e.target)) {
+      setOpen(false);
     }
+  };
 
-    window.addEventListener("click", handleClick);
+  window.addEventListener("click", handleClick);
 
-    return () => {
-      window.removeEventListener("click", handleClick);
-    };
-  }, []);
+  return () => {
+    window.removeEventListener("click", handleClick);
+
+    if (channel) {
+      supabase.removeChannel(channel);
+    }
+  };
+}, []);
 
   const loadNotifications = async () => {
-    // replace 1 with your logged in student id later
-    const studentId = 1;
+  // Replace this later with your logged-in user's user_id
+  const userId = 1;
 
-    const { data } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("student_id", studentId)
-      .order("created_at", { ascending: false });
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
 
-    setNotifications(data || []);
-  };
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  setNotifications(data || []);
+};
 
   const unread = notifications.filter((n) => !n.is_read).length;
 

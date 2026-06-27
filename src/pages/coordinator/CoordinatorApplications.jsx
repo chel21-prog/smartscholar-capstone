@@ -44,12 +44,13 @@ const [sendNotification, setSendNotification] = useState(true);
   semester,
   scholarship_id,
   students (
-    student_id,
-    users (
-      first_name,
-      last_name
-    )
-  ),
+  student_id,
+  user_id,
+  users (
+    first_name,
+    last_name
+  )
+),
   scholarships (
     scholarship_name
   )
@@ -170,15 +171,17 @@ setApproveOpen(true);
     });
     if (sendNotification) {
   const { error: notifError } = await supabase
-    .from("notifications")
-    .insert({
-      student_id: app.students.student_id,
-      title: notificationTitle,
-      message: notificationMessage,
-      type: "Application",
-      is_read: false,
-      created_at: new Date().toISOString(),
-    });
+  .from("notifications")
+  .insert({
+    user_id: app.students.user_id,
+    title: notificationTitle,
+    message: notificationMessage,
+    notification_type: "Application",
+  });
+
+if (notifError) {
+  console.error(notifError);
+}
 
   if (notifError) {
     console.log(notifError);
