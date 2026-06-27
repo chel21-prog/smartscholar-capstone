@@ -148,6 +148,28 @@ setApproveOpen(true);
 
 };
 
+const openRejectModal = (application) => {
+  setSelectedApplication(application);
+
+  setNotificationTitle("Scholarship Application Rejected");
+
+  setNotificationMessage(
+`Dear ${application.students.users.first_name},
+
+Thank you for applying for the ${application.scholarships.scholarship_name} scholarship.
+
+After reviewing your application, we regret to inform you that it was not approved at this time.
+
+You may contact the scholarship coordinator if you have any questions regarding your application.
+
+Thank you.`
+  );
+
+  setSendNotification(true);
+
+  setRejectOpen(true);
+};
+
   const approveApplication = async () => {
   const app = selectedApplication;
 
@@ -207,6 +229,54 @@ setSendNotification(true);
 
 await load();
   };
+
+  const rejectApplication = async () => {
+  const app = selectedApplication;
+
+  if (!app) return;
+
+  const { error } = await supabase
+    .from("scholarship_applications")
+    .update({
+      status: "Rejected",
+    })
+    .eq("application_id", app.application_id);
+
+  if (error) {
+    return alert(error.message);
+  }
+
+  if (sendNotification) {
+    const { error: notifError } = await supabase
+      .from("notifications")
+      .insert({
+        user_id: app.students.user_id,
+        title: notificationTitle,
+        message: notificationMessage,
+        notification_type: "Application",
+      });
+
+    if (notifError) {
+      console.error(notifError);
+    }
+  }
+
+  setApplications((prev) =>
+    prev.map((a) =>
+      a.application_id === app.application_id
+        ? { ...a, status: "Rejected" }
+        : a
+    )
+  );
+
+  setRejectOpen(false);
+  setSelectedApplication(null);
+  setNotificationTitle("");
+  setNotificationMessage("");
+  setSendNotification(true);
+
+  await load();
+};
 
   // =========================
   // ⭐ EXPORT SINGLE APPLICATION
@@ -428,7 +498,7 @@ const addFooter = (doc, footerImage) => {
     ...styles.actionBtn,
     background: "#dc2626",
   }}
-  onClick={() => updateStatus(a.application_id,"Rejected")}
+  onClick={() => openRejectModal(a)}
 >
                       Reject
                     </button>
@@ -553,6 +623,66 @@ Approve Application
 </div>
 
 )
+}
+
+{
+  rejectOpen && (
+    <div style={styles.overlay}>
+      <div style={styles.modal}>
+
+        <h2>Reject Application</h2>
+
+        <input
+          style={styles.input}
+          placeholder="Notification title"
+          value={notificationTitle}
+          onChange={(e) => setNotificationTitle(e.target.value)}
+        />
+
+        <textarea
+          style={{
+            ...styles.input,
+            minHeight: 220,
+            resize: "vertical",
+          }}
+          rows={10}
+          placeholder="Notification message"
+          value={notificationMessage}
+          onChange={(e) => setNotificationMessage(e.target.value)}
+        />
+
+        <label>
+          <input
+            type="checkbox"
+            checked={sendNotification}
+            onChange={() => setSendNotification(!sendNotification)}
+          />
+          Send notification
+        </label>
+
+        <div style={styles.modalActions}>
+          <button onClick={() => setRejectOpen(false)}>
+            Cancel
+          </button>
+
+          <button
+            onClick={rejectApplication}
+            style={{
+              background: "#dc2626",
+              color: "#fff",
+              border: "none",
+              borderRadius: 8,
+              padding: "10px 18px",
+              cursor: "pointer",
+            }}
+          >
+            Reject Application
+          </button>
+        </div>
+
+      </div>
+    </div>
+  )
 }
 
     </div>
