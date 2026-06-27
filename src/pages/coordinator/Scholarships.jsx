@@ -12,6 +12,7 @@ const [editingId, setEditingId] = useState(null);
   const [sponsor, setSponsor] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
+  const [slots, setSlots] = useState("");
   const [deadline, setDeadline] = useState("");
 
   // REQUIREMENTS
@@ -196,6 +197,7 @@ const addEligibilityRequirement = async () => {
   setSponsor(scholarship.sponsor || "");
   setDescription(scholarship.description || "");
   setAmount(scholarship.amount || "");
+  setSlots(scholarship.slots || "");
   setDeadline(scholarship.submission_deadline || "");
   console.log("EDIT DATA:", scholarship);
 
@@ -257,6 +259,7 @@ const updateScholarship = async () => {
       sponsor,
       description,
       amount: parseInt(amount || 0),
+      slots: parseInt(slots || 0),
       submission_deadline: deadline,
     })
     .eq("scholarship_id", editingId);
@@ -335,13 +338,14 @@ if (fields.length) {
     const { data: scholarship, error } = await supabase
       .from("scholarships")
       .insert({
-        scholarship_name: name,
-        sponsor,
-        description,
-        amount: parseInt(amount || 0),
-        submission_deadline: deadline,
-        status: "Active",
-      })
+  scholarship_name: name,
+  sponsor,
+  description,
+  amount: parseInt(amount || 0),
+  slots: parseInt(slots || 0),
+  submission_deadline: deadline,
+  status: "Active",
+})
       .select()
       .single();
 
@@ -444,6 +448,7 @@ const viewForm = async (scholarshipId) => {
     setSponsor("");
     setDescription("");
     setAmount("");
+    setSlots("");
     setDeadline("");
     setSelectedReq([]);
     setFormTitle("");
@@ -469,6 +474,7 @@ const viewForm = async (scholarshipId) => {
               <th>Sponsor</th>
               <th>Description</th>
               <th>Amount</th>
+              <th>Slots</th>
               <th>Deadline</th>
               <th>Status</th>
               <th>Requirements</th>
@@ -484,6 +490,7 @@ const viewForm = async (scholarshipId) => {
       <td>{s.sponsor}</td>
       <td>{s.description}</td>
       <td>₱{s.amount}</td>
+      <td>{s.slots}</td>
       <td>{s.submission_deadline}</td>
 
       {/* STATUS TOGGLE */}
@@ -643,6 +650,13 @@ const viewForm = async (scholarshipId) => {
             <input placeholder="Sponsor" value={sponsor} onChange={(e) => setSponsor(e.target.value)} style={input} />
             <textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} style={input} />
             <input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} style={input} />
+            <input
+  type="number"
+  placeholder="Number of Slots"
+  value={slots}
+  onChange={(e) => setSlots(e.target.value)}
+  style={input}
+/>
             <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} style={input} />
 
             <h3>Requirements Checklist</h3>

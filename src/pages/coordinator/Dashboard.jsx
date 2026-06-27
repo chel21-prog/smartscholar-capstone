@@ -8,15 +8,21 @@ export default function CoordinatorDashboard() {
   const [selectedApp, setSelectedApp] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState("Pending");
+const [search, setSearch] = useState("");
+const [scholarshipFilter, setScholarshipFilter] =
+  useState("All");
   const [academic, setAcademic] = useState(null);
   const [scholarStats, setScholarStats] = useState([]);
-const [editMode, setEditMode] = useState(false);
+  const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
 const [showReportModal, setShowReportModal] = useState(false);
 const [form, setForm] = useState({
   academic_year: "",
   semester: "",
 });
+// Pagination
+const ITEMS_PER_PAGE = 10;
+const [currentPage, setCurrentPage] = useState(1);
 
 const [reportLayout, setReportLayout] = useState("portrait");
 
@@ -50,7 +56,8 @@ const [filterOptions, setFilterOptions] = useState({
   useEffect(() => {
   load();
   loadAcademic();
-  loadScholarStats(); // ✅ ADD THIS
+  loadScholarStats();
+  loadUpcomingDeadlines();
 }, []);
 
   const load = async () => {
@@ -66,7 +73,7 @@ const [filterOptions, setFilterOptions] = useState({
     academic_year,
     semester,
     students (
-      student_id,
+      school_id,
       course,
       year_level,
 
@@ -147,38 +154,70 @@ setFilterOptions({
 });
 
   const loadScholarStats = async () => {
-  const { data, error } = await supabase
-    .from("grantees")
-    .select(`
-      scholarship_id,
-      scholarships (
-        scholarship_name
-      )
-    `);
+  // Get all scholarships with slot capacity
+  const { data: scholarships, error: scholarshipError } =
+    await supabase
+      .from("scholarships")
+      .select(`
+        scholarship_id,
+        scholarship_name,
+        slots
+      `);
 
-  if (error) {
-    console.error(error.message);
+  if (scholarshipError) {
+    console.error(scholarshipError);
     return;
   }
 
-  const grouped = {};
+  // Get every grantee
+  const { data: grantees, error: granteeError } =
+    await supabase
+      .from("grantees")
+      .select(`
+        scholarship_id,
+        status
+      `);
 
-  (data || []).forEach((g) => {
-    const id = g.scholarship_id;
-    const name = g.scholarships?.scholarship_name || "Unknown";
+  if (granteeError) {
+    console.error(granteeError);
+    return;
+  }
 
-    if (!grouped[id]) {
-      grouped[id] = {
-        scholarship_id: id,
-        scholarship_name: name,
-        count: 0,
-      };
-    }
+  const stats = scholarships.map((scholarship) => {
+    const occupied = grantees.filter(
+      (g) =>
+        g.scholarship_id === scholarship.scholarship_id &&
+        g.status === "Active"
+    ).length;
 
-    grouped[id].count += 1;
+    return {
+      scholarship_id: scholarship.scholarship_id,
+      scholarship_name: scholarship.scholarship_name,
+      occupied,
+      slots: scholarship.slots,
+    };
   });
 
-  setScholarStats(Object.values(grouped));
+  setScholarStats(stats);
+};
+
+const loadUpcomingDeadlines = async () => {
+  const { data, error } = await supabase
+    .from("scholarships")
+    .select(`
+      scholarship_name,
+      submission_deadline
+    `)
+    .eq("status", "Active")
+    .order("submission_deadline", { ascending: true })
+    .limit(5);
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  setUpcomingDeadlines(data || []);
 };
 
 const loadImage = (src) => {
@@ -267,7 +306,7 @@ const generatePDF = async () => {
     const row = [];
 
     if (columns.schoolId)
-      row.push(a.students?.student_id);
+      row.push(a.students?.school_id);
 
     if (columns.studentName)
       row.push(
@@ -395,15 +434,17 @@ const exportReport = async () => {
   academic_year,
 
   students (
-    course,
-    year_level,
+  student_id,
+  school_id,
+  course,
+  year_level,
 
-    users (
-      first_name,
-      middle_name,
-      last_name
-    )
-  ),
+  users (
+    first_name,
+    middle_name,
+    last_name
+  )
+),
 
   scholarships (
     scholarship_name,
@@ -574,28 +615,92 @@ const updateStatus = async (id, status) => {
 };
 
   const saveAcademic = async () => {
+  if (!academic) return;
+
   const { error } = await supabase
     .from("academic_settings")
     .update({
       academic_year: form.academic_year,
       semester: form.semester,
-      updated_at: new Date(),
+      updated_at: new Date().toISOString(),
     })
-    .eq("id", academic.id); // MUST exist
+    .eq("id", academic.id);
 
-  if (error) return alert(error.message);
+  if (error) {
+    alert(error.message);
+    return;
+  }
 
-  alert("Academic period updated!");
-
-  setEditMode(false);
-  loadAcademic();
-  console.log(academic);
+  setAcademic({
+    ...academic,
+    academic_year: form.academic_year,
+    semester: form.semester,
+  });
 };
 
-  const filtered =
-    filter === "All"
-      ? applications
-      : applications.filter((a) => a.status === filter);
+  const filtered = applications.filter((a) => {
+
+  // Search Student ID
+  if (search) {
+
+  const keyword = search.toLowerCase();
+
+  const fullName =
+    `${a.students?.users?.first_name || ""} ${
+      a.students?.users?.last_name || ""
+    }`.toLowerCase();
+
+  const schoolId = String(
+  a.students?.school_id || ""
+).toLowerCase();
+
+  const scholarship =
+    (
+      a.scholarships?.scholarship_name || ""
+    ).toLowerCase();
+
+  const status =
+    (a.status || "").toLowerCase();
+
+  const matches =
+    fullName.includes(keyword) ||
+    schoolId.includes(keyword) ||
+    scholarship.includes(keyword) ||
+    status.includes(keyword);
+
+  if (!matches) return false;
+}
+
+  // Scholarship
+  if (
+    scholarshipFilter !== "All" &&
+    a.scholarships?.scholarship_name !== scholarshipFilter
+  ) {
+    return false;
+  }
+
+  // Status
+  if (
+    filter !== "All" &&
+    a.status !== filter
+  ) {
+    return false;
+  }
+
+  return true;
+
+});
+
+useEffect(() => {
+  setCurrentPage(1);
+}, [search, filter, scholarshipFilter]);
+
+const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+
+const paginatedApplications = filtered.slice(
+  (currentPage - 1) * ITEMS_PER_PAGE,
+  currentPage * ITEMS_PER_PAGE
+);
 
   if (loading) return <p style={styles.loading}>Loading...</p>;
   
@@ -623,115 +728,324 @@ const updateSignatory = (index, field, value) => {
   setSignatories(updated);
 };
 
+const totalApplicants = applications.length;
+
+const totalGrantees = scholarStats.reduce(
+  (sum, s) => sum + (s.occupied || 0),
+  0
+);
+
+const pendingApplications = applications.filter(
+  (a) => a.status === "Pending"
+).length;
+
+const totalScholarships = scholarStats.length;
 
   return (
-    <div style={styles.page}>
-      <h1 style={styles.title}>Coordinator Dashboard</h1>
-      {/* ACADEMIC CARD */}
-<div style={styles.academicCard}>
-  <h3>Academic Period</h3>
+    <div style={styles.container}>
+      <div style={styles.header}>
+  <h1 style={styles.title}>
+    Coordinator Dashboard
+  </h1>
 
-  {!editMode ? (
-    <>
-      <p>
-        <b>AY:</b> {academic?.academic_year}
-      </p>
-      <p>
-        <b>Semester:</b> {academic?.semester}
-      </p>
+  <div style={styles.headerRight}>
 
-      <button
-        style={styles.btnBlue}
-        onClick={() => setEditMode(true)}
-      >
-        Edit
-      </button>
-    </>
-  ) : (
-    <>
-      <input
-        style={styles.input}
-        value={form.academic_year}
-        onChange={(e) =>
-          setForm({ ...form, academic_year: e.target.value })
-        }
-        placeholder="Academic Year"
-      />
+    <div style={styles.periodItem}>
+  <label>AY</label>
 
-      <select
-        style={styles.input}
-        value={form.semester}
-        onChange={(e) =>
-          setForm({ ...form, semester: e.target.value })
-        }
-      >
-        <option>1st Semester</option>
-        <option>2nd Semester</option>
-      </select>
-
-      <div style={{ display: "flex", gap: 6 }}>
-        <button style={styles.btnGreen} onClick={saveAcademic}>
-          Save
-        </button>
-
-        <button
-          style={styles.btnRed}
-          onClick={() => setEditMode(false)}
-        >
-          Cancel
-        </button>
-      </div>
-    </>
-  )}
+  <input
+    style={styles.periodInput}
+    value={form.academic_year}
+    onChange={(e) =>
+      setForm({
+        ...form,
+        academic_year: e.target.value,
+      })
+    }
+    onBlur={() => saveAcademic()}
+  />
 </div>
 
-<div style={styles.scholarCardBox}>
-  <h3 style={{ marginBottom: 10 }}>Scholarships</h3>
+<div style={styles.periodItem}>
+  <label>Semester</label>
 
-  <div style={styles.scholarListSmall}>
-    {scholarStats.map((s) => (
-      <div key={s.scholarship_id} style={styles.scholarRowSmall}>
-        <span style={styles.nameText}>{s.scholarship_name}</span>
-        <span style={styles.countBadge}>{s.count}</span>
-      </div>
-    ))}
+  <select
+    style={styles.periodInput}
+    value={form.semester}
+    onChange={async (e) => {
+  const updatedForm = {
+    ...form,
+    semester: e.target.value,
+  };
+
+  setForm(updatedForm);
+
+  if (!academic) return;
+
+  const { error } = await supabase
+    .from("academic_settings")
+    .update({
+      academic_year: updatedForm.academic_year,
+      semester: updatedForm.semester,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", academic.id);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  setAcademic(updatedForm);
+}}
+  >
+    <option>1st Semester</option>
+    <option>2nd Semester</option>
+  </select>
+</div>
+
+    <button
+      style={styles.btnGreen}
+      onClick={() => setShowReportModal(true)}
+    >
+      Generate Report
+    </button>
+
   </div>
 </div>
+<div style={styles.cardGrid}>
 
-      <button
-  style={styles.btnGreen}
-  onClick={exportReport}
->
-  Export Masterlist
-</button>
-<button
-  style={styles.btnGreen}
-  onClick={() => setShowReportModal(true)}
->Generate Report
-</button>
+  <div style={styles.card}>
+  <p style={styles.cardLabel}>Applications This Month</p>
+  <h2 style={styles.cardValue}>
+    {
+      applications.filter(a => {
+        const date = new Date(a.application_date);
+        const now = new Date();
+        return (
+          date.getMonth() === now.getMonth() &&
+          date.getFullYear() === now.getFullYear()
+        );
+      }).length
+    }
+  </h2>
+</div>
 
-      {/* FILTERS */}
-      <div style={styles.filterRow}>
-        {["All", "Pending", "Approved", "Rejected"].map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            style={{
-              ...styles.filterBtn,
-              background: filter === f ? "#2563eb" : "#fff",
-              color: filter === f ? "#fff" : "#111",
-            }}
-          >
-            {f}
-          </button>
-        ))}
+  <div style={styles.card}>
+    <p style={styles.cardLabel}>Grantees</p>
+    <h2 style={styles.cardValue}>{totalGrantees}</h2>
+  </div>
+
+  <div style={styles.card}>
+  <p style={styles.cardLabel}>Acceptance Rate</p>
+  <h2 style={styles.cardValue}>
+    {
+      totalApplicants
+        ? Math.round(
+            (applications.filter(a => a.status === "Approved").length /
+              totalApplicants) *
+              100
+          )
+        : 0
+    }%
+  </h2>
+</div>
+
+  <div style={styles.card}>
+    <p style={styles.cardLabel}>Scholarships</p>
+    <h2 style={styles.cardValue}>{totalScholarships}</h2>
+  </div>
+
+  
+
+</div>
+
+
+<div style={styles.infoGrid}>
+
+  {/* Scholarship Count */}
+  <div style={styles.infoCard}>
+    <h3 style={styles.infoTitle}>Scholarships</h3>
+     <div style={styles.cardContent}>
+    {scholarStats.map((s) => (
+  <div
+    key={s.scholarship_id}
+    style={styles.infoRow}
+  >
+    <span>{s.scholarship_name}</span>
+
+    <span
+      style={{
+        ...styles.countBadge,
+        background:
+          s.occupied >= s.slots
+            ? "#dc2626"
+            : s.occupied >= s.slots * 0.8
+            ? "#f59e0b"
+            : "#16a34a",
+      }}
+    >
+      {s.occupied} / {s.slots}
+    </span>
+  </div>
+))}
+</div>
+  </div>
+
+  {/* Upcoming Deadlines */}
+  <div style={styles.infoCard}>
+    <h3 style={styles.infoTitle}>
+      Upcoming Deadlines
+    </h3>
+     <div style={styles.cardContent}>
+      {upcomingDeadlines.map((d, index) => (
+      <div key={index} style={styles.infoRow}>
+        <span>{d.scholarship_name}</span>
+
+        <span>
+          {new Date(
+            d.submission_deadline
+          ).toLocaleDateString()}
+        </span>
       </div>
+    ))}</div>
+  </div>
 
+  {/* Recent Activity */}
+  <div style={styles.infoCard}>
+    <h3 style={styles.infoTitle}>
+      Recent Activity
+    </h3>
+    <div style={styles.cardContent}>
+    {applications.slice(0,5).map((a) => (
+      <div
+        key={a.application_id}
+        style={styles.infoRow}
+      >
+        <span>
+          {a.students?.users?.first_name}
+        </span>
+
+        <span>{a.status}</span>
+      </div>
+    ))}</div>
+  </div>
+
+  {/* Report Summary */}
+  <div style={styles.infoCard}>
+    <h3 style={styles.infoTitle}>
+      Report Summary
+    </h3>
+     <div style={styles.cardContent}>
+    <div style={styles.infoRow}>
+      <span>Applications</span>
+
+      <strong>{totalApplicants}</strong>
+    </div>
+
+    <div style={styles.infoRow}>
+      <span>Approved</span>
+
+      <strong>
+        {
+          applications.filter(
+            a => a.status === "Approved"
+          ).length
+        }
+      </strong>
+    </div>
+
+    <div style={styles.infoRow}>
+      <span>Pending</span>
+
+      <strong>{pendingApplications}</strong>
+    </div>
+
+    <div style={styles.infoRow}>
+      <span>Rejected</span>
+
+      <strong>
+        {
+          applications.filter(
+            a => a.status === "Rejected"
+          ).length
+        }
+      </strong>
+    </div>
+    </div>
+
+  </div>
+
+</div>
+    
+
+    <h2 style={{ marginBottom: 15 }}>
+  Applications ({filtered.length})
+</h2>
+    <div style={styles.filterRow}>
+
+  <input
+    type="text"
+    placeholder="Search by School ID, Student, Scholarship or Status..."
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+    style={styles.searchInput}
+  />
+
+  <select
+    value={scholarshipFilter}
+    onChange={(e) =>
+      setScholarshipFilter(e.target.value)
+    }
+    style={styles.select}
+  >
+    <option value="All">
+      All Scholarships
+    </option>
+
+    {[...new Set(
+      applications.map(
+        (a) => a.scholarships?.scholarship_name
+      )
+    )].map((name) => (
+      <option key={name} value={name}>
+        {name}
+      </option>
+    ))}
+  </select>
+
+  <select
+    value={filter}
+    onChange={(e) =>
+      setFilter(e.target.value)
+    }
+    style={styles.select}
+  >
+    <option value="Pending">
+      Pending
+    </option>
+
+    <option value="Approved">
+      Approved
+    </option>
+
+    <option value="Rejected">
+      Rejected
+    </option>
+
+    <option value="All">
+      All
+    </option>
+
+  </select>
+
+</div>
       {/* TABLE */}
       <div style={styles.tableContainer}>
         <table style={styles.table}>
           <thead>
             <tr>
+              <th>School ID</th>
               <th>Student</th>
               <th>Scholarship</th>
               <th>Status</th>
@@ -741,9 +1055,24 @@ const updateSignatory = (index, field, value) => {
           </thead>
 
           <tbody>
-            {filtered.map((a) => (
-              <tr key={a.application_id}>
-                <td>{a.students?.student_id}</td>
+{paginatedApplications.map((a,index)=>(
+<tr
+    key={a.application_id}
+    style={{
+        background:index % 2 === 0
+            ? "#fff"
+            : "#f9fafb"
+    }}
+>
+                <td>{a.students?.school_id}</td>
+
+<td>
+  {a.students?.users?.first_name}{" "}
+  {a.students?.users?.middle_name
+    ? a.students.users.middle_name.charAt(0) + ". "
+    : ""}
+  {a.students?.users?.last_name}
+</td>
                 <td>{a.scholarships?.scholarship_name}</td>
                 <td>
                   <span
@@ -803,33 +1132,165 @@ const updateSignatory = (index, field, value) => {
           </tbody>
         </table>
       </div>
+      <div
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 20,
+    flexWrap: "wrap",
+    gap: 10,
+  }}
+>
+  <span>
+    Showing{" "}
+    {(currentPage - 1) * ITEMS_PER_PAGE + 1}
+    {" - "}
+    {Math.min(
+      currentPage * ITEMS_PER_PAGE,
+      filtered.length
+    )}{" "}
+    of {filtered.length}
+  </span>
+
+  <div
+    style={{
+      display: "flex",
+      gap: 8,
+      alignItems: "center",
+    }}
+  >
+    <button
+      style={styles.pageButton}
+      disabled={currentPage === 1}
+      onClick={() =>
+        setCurrentPage((page) => page - 1)
+      }
+    >
+      Previous
+    </button>
+
+    <span>
+      Page {currentPage} of {totalPages || 1}
+    </span>
+
+    <button
+      style={styles.pageButton}
+      disabled={
+        currentPage === totalPages ||
+        totalPages === 0
+      }
+      onClick={() =>
+        setCurrentPage((page) => page + 1)
+      }
+    >
+      Next
+    </button>
+  </div>
+</div>
 
       {/* VIEW MODAL */}
-      {selectedApp && (
-        <div style={styles.overlay}>
-          <div style={styles.modal}>
-            <h2>Application Answers</h2>
+      {/* VIEW MODAL */}
+{selectedApp && (
+  <div
+    style={styles.overlay}
+    onClick={() => setSelectedApp(null)}
+  >
+    <div
+      style={styles.modal}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <h2 style={styles.modalTitle}>
+        Application Details
+      </h2>
 
-            <p style={styles.sub}>
-              {selectedApp.scholarships?.scholarship_name}
-            </p>
-
-            {answers.map((r, i) => (
-              <div key={i} style={styles.answerBox}>
-                <b>{r.scholarship_form_fields?.label}</b>
-                <p>{r.answer}</p>
-              </div>
-            ))}
-
-            <button
-              style={styles.btnRed}
-              onClick={() => setSelectedApp(null)}
-            >
-              Close
-            </button>
-          </div>
+      <div style={styles.studentCard}>
+        <div>
+          <strong>School ID</strong>
+          <p>{selectedApp.students?.school_id}</p>
         </div>
-      )}
+
+        <div>
+          <strong>Student</strong>
+          <p>
+            {selectedApp.students?.users?.first_name}{" "}
+            {selectedApp.students?.users?.middle_name
+              ? selectedApp.students.users.middle_name.charAt(0) + ". "
+              : ""}
+            {selectedApp.students?.users?.last_name}
+          </p>
+        </div>
+
+        <div>
+          <strong>Scholarship</strong>
+          <p>{selectedApp.scholarships?.scholarship_name}</p>
+        </div>
+
+        <div>
+          <strong>Status</strong>
+
+          <span
+            style={{
+              ...styles.badge,
+              background:
+                selectedApp.status === "Pending"
+                  ? "#FEF3C7"
+                  : selectedApp.status === "Approved"
+                  ? "#DCFCE7"
+                  : "#FEE2E2",
+              color:
+                selectedApp.status === "Pending"
+                  ? "#92400E"
+                  : selectedApp.status === "Approved"
+                  ? "#166534"
+                  : "#991B1B",
+            }}
+          >
+            {selectedApp.status}
+          </span>
+        </div>
+      </div>
+
+      <hr style={{ margin: "20px 0" }} />
+
+      <h3 style={{ marginBottom: 15 }}>
+        Submitted Answers
+      </h3>
+
+      <div style={styles.answersContainer}>
+        {answers.map((r, i) => (
+          <div
+            key={i}
+            style={styles.answerCard}
+          >
+            <div style={styles.question}>
+              {r.scholarship_form_fields?.label}
+            </div>
+
+            <div style={styles.answer}>
+              {r.answer}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          marginTop: 20,
+        }}
+      >
+        <button
+          style={styles.btnRed}
+          onClick={() => setSelectedApp(null)}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {showReportModal && (
   <div style={styles.overlay}>
@@ -1139,10 +1600,17 @@ const updateSignatory = (index, field, value) => {
     </thead>
 
     <tbody>
-      {filteredApplications.slice(0,10).map((a) => (
-        <tr key={a.application_id}>
+{filtered.map((a,index)=>(
+<tr
+    key={a.application_id}
+    style={{
+        background:index % 2 === 0
+            ? "#fff"
+            : "#f9fafb"
+    }}
+>
           {columns.schoolId && (
-            <td>{a.students?.student_id}</td>
+            <td>{a.students?.school_id}</td>
           )}
 
           {columns.studentName && (
@@ -1220,207 +1688,266 @@ const updateSignatory = (index, field, value) => {
 }
 
 const styles = {
-  page: {
-    padding: 30,
-    background: "#f8fafc",
-    minHeight: "100vh",
-  },
-
-  title: {
-    fontSize: 28,
-    fontWeight: 700,
-    marginBottom: 20,
-  },
-
-  filterRow: {
-    display: "flex",
-    gap: 8,
-    marginBottom: 15,
-  },
-
-  filterBtn: {
-    padding: "6px 12px",
-    border: "1px solid #ddd",
-    borderRadius: 6,
-    cursor: "pointer",
-  },
-
-  tableContainer: {
-    background: "#fff",
-    borderRadius: 10,
-    overflowX: "auto",
-  },
-
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-
-  badge: {
-    padding: "4px 10px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 600,
-  },
-
-  actions: {
-    display: "flex",
-    gap: 6,
-  },
-
-  btnBlue: {
-    padding: "6px 10px",
-    background: "#2563eb",
-    color: "#fff",
-    border: "none",
-    borderRadius: 6,
-  },
-
-  btnGreen: {
-    padding: "6px 10px",
-    background: "#16a34a",
-    color: "#fff",
-    border: "none",
-    borderRadius: 6,
-  },
-
-  btnRed: {
-    padding: "6px 10px",
-    background: "#dc2626",
-    color: "#fff",
-    border: "none",
-    borderRadius: 6,
-  },
-
-  overlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.4)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  modal: {
-    background: "#fff",
-    padding: 20,
-    borderRadius: 10,
-    width: "450px",
-  },
-
-  answerBox: {
+  container: {
     padding: 10,
-    background: "#f1f5f9",
-    marginBottom: 8,
-    borderRadius: 8,
   },
 
-  sub: {
-    fontSize: 13,
-    color: "#64748b",
-    marginBottom: 10,
-  },
-
-  loading: {
-    padding: 20,
-  },
-  academicCard: {
-  background: "#fff",
-  padding: 15,
-  borderRadius: 10,
-  marginBottom: 20,
-  width: "300px",
-  boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
-},
-scholarWrap: {
-  marginBottom: 20,
-  padding: 15,
-  background: "#fff",
-  borderRadius: 10,
-},
-
-scholarGrid: {
-  display: "flex",
-  gap: 10,
-  flexWrap: "wrap",
-},
-
-scholarCard: {
-  padding: 10,
-  border: "1px solid #eee",
-  borderRadius: 8,
-  minWidth: 160,
-},
-scholarList: {
-  display: "flex",
-  flexDirection: "column",
-  gap: 8,
-},
-
-scholarRow: {
-  display: "flex",
-  justifyContent: "space-between",
-  padding: "8px 10px",
-  borderBottom: "1px solid #eee",
-  fontSize: 14,
-},
-
-countBadge: {
-  background: "#2563eb",
-  color: "#fff",
-  padding: "2px 10px",
-  borderRadius: 999,
-  fontSize: 12,
-  minWidth: 30,
-  textAlign: "center",
-},
-scholarCardBox: {
-  background: "#fff",
-  padding: 15,
-  borderRadius: 10,
-  marginBottom: 20,
-  width: "300px", // same as academic card
-  boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
-},
-
-scholarListSmall: {
-  display: "flex",
-  flexDirection: "column",
-  gap: 6,
-},
-
-scholarRowSmall: {
+  header: {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  fontSize: 13,
-  padding: "4px 0",
-  borderBottom: "1px solid #f1f1f1",
+  marginBottom: 30,
 },
 
-nameText: {
-  fontSize: 13,
-  color: "#111",
-  maxWidth: "200px",
-  whiteSpace: "nowrap",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
+headerRight: {
+  display: "flex",
+  alignItems: "center",
+  gap: 20,
+},
+
+cardGrid: {
+  display: "grid",
+  gridTemplateColumns:
+    "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: 20,
+  marginBottom: 30,
+},
+
+card: {
+  background: "#fff",
+  borderRadius: 12,
+  padding: 20,
+  boxShadow: "0 2px 8px rgba(0,0,0,.08)",
+},
+
+cardLabel: {
+  fontSize: 14,
+  color: "#6b7280",
+  marginBottom: 10,
+},
+
+cardValue: {
+  fontSize: 32,
+  fontWeight: "700",
+  color: "#111827",
+},
+periodItem: {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+},
+
+periodInput: {
+  padding: "6px 10px",
+  border: "1px solid #d1d5db",
+  borderRadius: 6,
+  fontSize: 14,
+  minWidth: 150,
+},
+
+infoGrid: {
+  display: "grid",
+  gridTemplateColumns:
+    "repeat(auto-fit, minmax(260px, 1fr))",
+  gap: 20,
+  marginBottom: 30,
+},
+
+infoCard: {
+  background: "#fff",
+  borderRadius: 12,
+  padding: 20,
+  boxShadow: "0 2px 8px rgba(0,0,0,.08)",
+  height: 260,
+  display: "flex",
+  flexDirection: "column",
+},
+
+infoTitle: {
+  marginBottom: 15,
+  fontSize: 18,
+  fontWeight: 600,
+  color: "#475c6c",
+},
+
+infoRow: {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "8px 0",
+  borderBottom: "1px solid #eee",
 },
 
 countBadge: {
-  background: "#2563eb",
+  background: "#475c6c",
   color: "#fff",
-  padding: "2px 8px",
-  borderRadius: 999,
-  fontSize: 11,
-  minWidth: 26,
-  textAlign: "center",
+  borderRadius: 20,
+  padding: "3px 10px",
+  fontSize: 13,
+  fontWeight: "600",
 },
-input: {
-  width: "100%",
-  padding: "8px",
+cardContent: {
+  flex: 1,
+  overflow: "auto",
+  paddingRight: 6,
+  scrollbarWidth: "none",
+},
+
+filterRow: {
+  display: "flex",
+  gap: 12,
+  marginBottom: 20,
+  flexWrap: "wrap",
+},
+
+searchInput: {
+  flex: "0 0 320px",
+  padding: "10px 14px",
   border: "1px solid #ddd",
-  borderRadius: "6px",
-  marginBottom: "10px",
+  borderRadius: 8,
+},
+
+select: {
+  minWidth: 180,
+  padding: "10px",
+  border: "1px solid #ddd",
+  borderRadius: 8,
+},
+studentInfo: {
+  display: "flex",
+  flexDirection: "column",
+},
+
+studentName: {
+  color: "#6b7280",
+  fontSize: 13,
+  marginTop: 2,
+},
+
+modalTitle: {
+  marginBottom: 20,
+},
+
+studentCard: {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
+  gap: 18,
+  background: "#f9fafb",
+  padding: 20,
+  borderRadius: 10,
+  marginBottom: 15,
+},
+
+answersContainer: {
+  display: "flex",
+  flexDirection: "column",
+  gap: 15,
+  maxHeight: 400,
+  overflowY: "auto",
+},
+
+answerCard: {
+  border: "1px solid #e5e7eb",
+  borderRadius: 8,
+  padding: 15,
+  background: "#fff",
+},
+
+question: {
+  fontWeight: "600",
+  marginBottom: 8,
+  color: "#374151",
+},
+
+answer: {
+  color: "#4b5563",
+  lineHeight: 1.6,
+},
+overlay: {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,.45)",
+
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+
+  zIndex: 9999,
+
+  padding: 20,
+},
+modal: {
+  background: "#fff",
+
+  width: "100%",
+  maxWidth: 900,
+
+  maxHeight: "90vh",
+
+  overflowY: "auto",
+
+  borderRadius: 14,
+
+  padding: 30,
+
+  boxShadow: "0 15px 40px rgba(0,0,0,.25)",
+},
+answersContainer: {
+  display: "flex",
+  flexDirection: "column",
+  gap: 15,
+
+  maxHeight: 400,
+
+  overflowY: "auto",
+
+  scrollbarWidth: "none",
+
+  msOverflowStyle: "none",
+},
+tableContainer: {
+  width: "100%",
+  overflowX: "auto",
+  background: "#fff",
+  borderRadius: 12,
+  boxShadow: "0 2px 10px rgba(0,0,0,.08)",
+  padding:10
+},
+table: {
+  width: "100%",
+  borderCollapse: "collapse",
+  minWidth: 900,
+  fontSize: 14,
+  background: "#fff",
+  
+},
+th: {
+  background: "#475c6c",
+  color: "#fff",
+  padding: "14px 16px",
+  textAlign: "left",
+  fontWeight: 600,
+  position: "sticky",
+  top: 0,
+  zIndex: 2,
+},
+td: {
+  textAlign: "center",
+  padding: "14px 16px",
+  borderBottom: "1px solid #eef2f7",
+  color: "#374151",
+},
+actions: {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+},
+pageButton: {
+  padding: "8px 14px",
+  border: "1px solid #475c6c",
+  borderRadius: 8,
+  background: "#475c6c",
+  color: "#fff",
+  cursor: "pointer",
 },
 };
