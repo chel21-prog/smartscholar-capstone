@@ -1748,7 +1748,7 @@ periodInput: {
 infoGrid: {
   display: "grid",
   gridTemplateColumns:
-    "repeat(auto-fit, minmax(260px, 1fr))",
+    "repeat(auto-fit, minmax(220px, 1fr))",
   gap: 20,
   marginBottom: 30,
 },
@@ -1756,7 +1756,7 @@ infoGrid: {
 infoCard: {
   background: "#fff",
   borderRadius: 12,
-  padding: 20,
+  padding: 10,
   boxShadow: "0 2px 8px rgba(0,0,0,.08)",
   height: 260,
   display: "flex",
