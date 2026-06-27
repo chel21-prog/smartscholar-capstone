@@ -50,7 +50,7 @@ export default function NotificationBell() {
 
   const loadNotifications = async () => {
   // Replace this later with your logged-in user's user_id
-  const userId = 1;
+  const userId = 59;
 
   const { data, error } = await supabase
     .from("notifications")
