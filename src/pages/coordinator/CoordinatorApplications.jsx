@@ -13,7 +13,17 @@ export default function CoordinatorApplications() {
 const FOOTER_HEIGHT = 20;
 const MARGIN_TOP = 10;
 const MARGIN_BOTTOM = 10;
+const [approveOpen, setApproveOpen] = useState(false);
 
+const [rejectOpen, setRejectOpen] = useState(false);
+
+const [selectedApplication, setSelectedApplication] = useState(null);
+
+const [notificationTitle, setNotificationTitle] = useState("");
+
+const [notificationMessage, setNotificationMessage] = useState("");
+
+const [sendNotification, setSendNotification] = useState(true);
   useEffect(() => {
     load();
   }, []);
@@ -112,8 +122,35 @@ const MARGIN_BOTTOM = 10;
       )
     );
   };
+ 
+  const openApproveModal = (application) => {
 
-  const approveApplication = async (app) => {
+setSelectedApplication(application);
+
+setNotificationTitle(
+"Scholarship Application Approved"
+);
+
+setNotificationMessage(
+`Dear ${application.students.users.first_name},
+
+Congratulations!
+
+Your application for the ${application.scholarships.scholarship_name} scholarship has been approved.
+
+You are now officially recognized as a scholarship grantee.
+
+Thank you.`
+);
+
+setApproveOpen(true);
+
+};
+
+  const approveApplication = async () => {
+  const app = selectedApplication;
+
+  if (!app) return;
     const { error } = await supabase
       .from("scholarship_applications")
       .update({ status: "Approved" })
@@ -122,6 +159,7 @@ const MARGIN_BOTTOM = 10;
     if (error) return alert(error.message);
 
     await supabase.from("grantees").insert({
+      
       student_id: app.students.student_id,
       scholarship_id: app.scholarship_id,
       application_id: app.application_id,
@@ -130,6 +168,22 @@ const MARGIN_BOTTOM = 10;
       academic_year: app.academic_year,
       semester: app.semester,
     });
+    if (sendNotification) {
+  const { error: notifError } = await supabase
+    .from("notifications")
+    .insert({
+      student_id: app.students.student_id,
+      title: notificationTitle,
+      message: notificationMessage,
+      type: "Application",
+      is_read: false,
+      created_at: new Date().toISOString(),
+    });
+
+  if (notifError) {
+    console.log(notifError);
+  }
+}
 
     setApplications((prev) =>
       prev.map((a) =>
@@ -138,6 +192,17 @@ const MARGIN_BOTTOM = 10;
           : a
       )
     );
+    setApproveOpen(false);
+
+setSelectedApplication(null);
+
+setNotificationTitle("");
+
+setNotificationMessage("");
+
+setSendNotification(true);
+
+await load();
   };
 
   // =========================
@@ -261,22 +326,27 @@ const addFooter = (doc, footerImage) => {
 
 
   return (
-    <div style={{ padding: 20 }}>
+    <div style={styles.page}>
 
-      <h2>Coordinator Applications</h2>
+      <div style={styles.header}>
+  <div>
+    <h1 style={styles.title}>Applications</h1>
+    <p style={styles.subtitle}>
+      Review scholarship applications, approve or reject submissions, and notify applicants.
+    </p>
+  </div>
+</div>
 
       {/* FILTER */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+      <div style={styles.filterContainer}>
         {["All", "Pending", "Approved", "Rejected"].map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
             style={{
-              padding: 6,
-              background: filter === f ? "#2563eb" : "#fff",
-              color: filter === f ? "#fff" : "#000",
-              border: "1px solid #ccc",
-            }}
+  ...styles.filterBtn,
+  ...(filter === f ? styles.filterBtnActive : {}),
+}}
           >
             {f}
           </button>
@@ -284,48 +354,79 @@ const addFooter = (doc, footerImage) => {
       </div>
 
       {/* TABLE */}
-      <table width="100%" border="1" cellPadding="8">
-        <thead>
+      {/* TABLE */}
+
+<div style={styles.card}>
+<table style={styles.table}>
+        <thead style={styles.thead}>
           <tr>
-            <th>Student</th>
-            <th>Scholarship</th>
-            <th>AY Approved</th>
-            <th>Semester Approved</th>
-            <th>Status</th>
-            <th>Application Date</th>
-            <th>Actions</th>
+            <th style={styles.th}>Student</th>
+            <th style={styles.th}>Scholarship</th>
+            <th style={styles.th}>AY Approved</th>
+            <th style={styles.th}>Semester Approved</th>
+            <th style={styles.th}>Status</th>
+            <th style={styles.th}>Application Date</th>
+            <th style={styles.th}>Actions</th>
           </tr>
         </thead>
 
         <tbody>
           {filtered.map((a) => (
             <tr key={a.application_id}>
-              <td>{getStudentName(a)}</td>
-              <td>{a.scholarships?.scholarship_name}</td>
-              <td>{a.academic_year}</td>
-              <td>{a.semester}</td>
-              <td>{a.status}</td>
-              <td>
+              <td style={styles.td}>{getStudentName(a)}</td>
+              <td style={styles.td}>{a.scholarships?.scholarship_name}</td>
+              <td style={styles.td}>{a.academic_year}</td>
+              <td style={styles.td}>{a.semester}</td>
+              <td style={styles.td}>{a.status}</td>
+              <td style={styles.td}>
                 {new Date(a.application_date).toLocaleDateString()}
               </td>
 
-              <td style={{ display: "flex", gap: 6 }}>
+              <td
+  style={{
+    ...styles.td,
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+  }}
+>
 
-                <button onClick={() => viewAnswers(a)}>
+                <button style={{
+    ...styles.actionBtn,
+    background: "#475c6c",
+  }} onClick={() => viewAnswers(a)}>
                   View
                 </button>
 
-                <button onClick={() => exportApplicationPDF(a)}>
+                <button
+  style={{
+    ...styles.actionBtn,
+    background: "#8a8583",
+  }}
+  onClick={() => exportApplicationPDF(a)}
+>
                   Export
                 </button>
 
                 {a.status === "Pending" && (
                   <>
-                    <button onClick={() => approveApplication(a)}>
-                      Approve
-                    </button>
+                    <button
+  style={{
+    ...styles.actionBtn,
+    background: "#16a34a",
+  }}
+  onClick={() => openApproveModal(a)}
+>
+  Approve
+</button>
 
-                    <button onClick={() => updateStatus(a.application_id, "Rejected")}>
+                    <button
+  style={{
+    ...styles.actionBtn,
+    background: "#dc2626",
+  }}
+  onClick={() => updateStatus(a.application_id,"Rejected")}
+>
                       Reject
                     </button>
                   </>
@@ -336,6 +437,7 @@ const addFooter = (doc, footerImage) => {
           ))}
         </tbody>
       </table>
+      </div>
 
       {/* MODAL */}
       {selectedApp && (
@@ -347,7 +449,7 @@ const addFooter = (doc, footerImage) => {
           justifyContent: "center",
           alignItems: "center"
         }}>
-          <div style={{ background: "#fff", padding: 20, width: 400 }}>
+          <div style={styles.modal}>
 
             <h3>Answers</h3>
 
@@ -366,6 +468,221 @@ const addFooter = (doc, footerImage) => {
         </div>
       )}
 
+      {
+approveOpen && (
+
+<div style={styles.overlay}>
+
+<div style={styles.modal}>
+
+<h2>Approve Application</h2>
+
+<input
+style={styles.input}
+placeholder="Notification title"
+
+value={notificationTitle}
+
+onChange={(e)=>setNotificationTitle(e.target.value)}
+
+/>
+
+<textarea
+style={{
+  ...styles.input,
+  minHeight: 220,
+  resize: "vertical",
+}}
+placeholder="Notification message"
+
+rows={10}
+
+value={notificationMessage}
+
+onChange={(e)=>setNotificationMessage(e.target.value)}
+
+/>
+
+<label>
+
+<input
+
+type="checkbox"
+
+checked={sendNotification}
+
+onChange={()=>setSendNotification(!sendNotification)}
+
+/>
+
+Send notification
+
+</label>
+
+<div style={styles.modalActions}>
+
+<button
+onClick={()=>setApproveOpen(false)}
+>
+
+Cancel
+
+</button>
+
+<button
+onClick={approveApplication}
+style={{
+  background: "#16a34a",
+  color: "#fff",
+  padding: "10px 18px",
+  border: "none",
+  borderRadius: 8,
+  cursor: "pointer",
+}}
+>
+Approve Application
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+)
+}
+
     </div>
   );
 }
+
+const styles = {
+  page: {
+    minHeight: "100vh",
+    padding: 24,
+    background: "#f5f6f8",
+    fontFamily: "Inter, sans-serif",
+    color: "#475c6c",
+  },
+
+  header: {
+    marginBottom: 25,
+  },
+
+  title: {
+    margin: 0,
+    fontSize: 30,
+    fontWeight: 700,
+    color: "#475c6c",
+  },
+
+  subtitle: {
+    marginTop: 6,
+    color: "#8a8583",
+    fontSize: 14,
+  },
+
+  filterContainer: {
+    display: "flex",
+    gap: 10,
+    marginBottom: 20,
+    flexWrap: "wrap",
+  },
+
+  filterBtn: {
+    padding: "10px 18px",
+    borderRadius: 10,
+    border: "1px solid #ddd",
+    background: "#fff",
+    color: "#475c6c",
+    cursor: "pointer",
+    fontWeight: 600,
+    transition: ".2s",
+  },
+
+  filterBtnActive: {
+    background: "#475c6c",
+    color: "#fff",
+    borderColor: "#475c6c",
+  },
+
+  card: {
+    background: "#fff",
+    borderRadius: 16,
+    overflowX: "auto",
+    boxShadow: "0 8px 24px rgba(0,0,0,.06)",
+  },
+
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    minWidth: 1100,
+  },
+
+  thead: {
+    background: "#475c6c",
+  },
+
+  th: {
+    padding: 14,
+    color: "#fff",
+    textAlign: "left",
+    fontWeight: 600,
+    fontSize: 14,
+  },
+
+  td: {
+    padding: 14,
+    borderBottom: "1px solid #ececec",
+    color: "#475c6c",
+    fontSize: 14,
+  },
+
+  actionBtn: {
+    border: "none",
+    borderRadius: 8,
+    padding: "8px 14px",
+    color: "#fff",
+    cursor: "pointer",
+    fontWeight: 600,
+    transition: ".2s",
+  },
+
+  overlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(71,92,108,.35)",
+    backdropFilter: "blur(4px)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 999,
+  },
+
+  modal: {
+    width: "100%",
+    maxWidth: 650,
+    background: "#fff",
+    borderRadius: 16,
+    padding: 28,
+    boxShadow: "0 20px 40px rgba(0,0,0,.15)",
+  },
+
+  input: {
+    width: "100%",
+    padding: 12,
+    borderRadius: 8,
+    border: "1px solid #ddd",
+    marginTop: 10,
+    marginBottom: 15,
+    fontSize: 14,
+    boxSizing: "border-box",
+  },
+
+  modalActions: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginTop: 20,
+  },
+};
