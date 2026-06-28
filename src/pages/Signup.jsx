@@ -90,18 +90,25 @@ navigate("/Login");
   };
 
   const handleGoogleSignup = async () => {
+  setLoading(true);
+  setError("");
+
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
       redirectTo: `${window.location.origin}/auth/callback`,
+      queryParams: {
+        prompt: "select_account",
+      },
     },
   });
 
   if (error) {
     setError(error.message);
+    setLoading(false);
   }
 };
-
+  
   return (
     <div style={styles.wrapper}>
 
