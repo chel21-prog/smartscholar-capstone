@@ -26,9 +26,12 @@ export default function Signup() {
 
     // 1. Create auth user
     const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+  email,
+  password,
+  options: {
+    emailRedirectTo: `${window.location.origin}/auth/callback`,
+  },
+});
 
     if (error) {
       setError(error.message);
@@ -108,7 +111,7 @@ navigate("/Login");
     setLoading(false);
   }
 };
-  
+
   return (
     <div style={styles.wrapper}>
 

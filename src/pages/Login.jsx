@@ -110,10 +110,7 @@ export default function Login() {
   };
 
   const handleGoogleLogin = async () => {
-  setLoading(true);
-  setError("");
-
-  const { error } = await supabase.auth.signInWithOAuth({
+  await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
       redirectTo: `${window.location.origin}/auth/callback`,
@@ -122,11 +119,6 @@ export default function Login() {
       },
     },
   });
-
-  if (error) {
-    setError(error.message);
-    setLoading(false);
-  }
 };
 
   return (
