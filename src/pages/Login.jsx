@@ -29,10 +29,18 @@ export default function Login() {
     });
 
     if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
+  if (
+    error.message.toLowerCase().includes("email not confirmed") ||
+    error.message.toLowerCase().includes("email not verified")
+  ) {
+    setError("Please verify your email before signing in. Check your inbox for the confirmation email.");
+  } else {
+    setError(error.message);
+  }
+
+  setLoading(false);
+  return;
+}
 
     const authUser = data.user;
 
@@ -101,6 +109,26 @@ export default function Login() {
     setLoading(false);
   };
 
+  const handleGoogleLogin = async () => {
+  setLoading(true);
+  setError("");
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+      queryParams: {
+        prompt: "select_account",
+      },
+    },
+  });
+
+  if (error) {
+    setError(error.message);
+    setLoading(false);
+  }
+};
+
   return (
     <div style={styles.wrapper}>
       
@@ -132,19 +160,22 @@ export default function Login() {
 
           <form onSubmit={handleLogin} style={styles.form}>
             <input
-              style={styles.input}
-              placeholder="Email address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+  type="email"
+  style={styles.input}
+  placeholder="Email address"
+  value={email}
+  required
+  onChange={(e) => setEmail(e.target.value)}
+/>
 
             <input
-              style={styles.input}
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+  type="password"
+  style={styles.input}
+  placeholder="Password"
+  value={password}
+  required
+  onChange={(e) => setPassword(e.target.value)}
+/>
 
             {/* TERMS CHECKBOX */}
             <label style={styles.checkbox}>
@@ -167,6 +198,21 @@ export default function Login() {
             <button style={styles.button} disabled={loading}>
               {loading ? "Signing in..." : "Sign In"}
             </button>
+            <div style={styles.divider}>
+  <span style={styles.line}></span>
+  <span>OR</span>
+  <span style={styles.line}></span>
+</div>
+            <button
+  type="button"
+  style={styles.googleButton}
+  onClick={handleGoogleLogin}
+  disabled={loading}
+>
+  {loading ? "Redirecting..." : "Continue with Google"}
+</button>
+
+
           </form>
 
           <div style={styles.signup}>
@@ -374,4 +420,25 @@ const styles = {
     border: "none",
     borderRadius: 8,
   },
+  googleButton: {
+  padding: 12,
+  borderRadius: 10,
+  border: "1px solid #ddd",
+  background: "#475c6c",
+  cursor: "pointer",
+  fontWeight: 600,
+},
+
+divider: {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  margin: "5px 0",
+},
+
+line: {
+  flex: 1,
+  height: 1,
+  background: "#ddd",
+},
 };

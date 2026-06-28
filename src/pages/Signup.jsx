@@ -5,9 +5,6 @@ import { useNavigate, Link } from "react-router-dom";
 export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showTerms, setShowTerms] = useState(false);
@@ -16,6 +13,7 @@ export default function Signup() {
   const navigate = useNavigate();
 
   const handleSignup = async (e) => {
+    
     e.preventDefault();
 
     if (!accepted) {
@@ -45,13 +43,13 @@ export default function Signup() {
       .from("users")
       .insert([
         {
-          auth_id: authUser.id,
-          email,
-          first_name: firstName,
-          last_name: lastName,
-          role: "Student",
-          status: "active",
-        },
+  auth_id: authUser.id,
+  email,
+  first_name: null,
+  last_name: null,
+  role: "Student",
+  status: "active",
+},
       ])
       .select()
       .single();
@@ -83,8 +81,26 @@ export default function Signup() {
     }
 
     setLoading(false);
-    navigate("/Login");
+
+alert(
+  "Your account has been created.\n\nPlease check your email and verify your account before logging in."
+);
+
+navigate("/Login");
   };
+
+  const handleGoogleSignup = async () => {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    },
+  });
+
+  if (error) {
+    setError(error.message);
+  }
+};
 
   return (
     <div style={styles.wrapper}>
@@ -115,33 +131,23 @@ export default function Signup() {
           <form onSubmit={handleSignup} style={styles.form}>
 
             <input
-              style={styles.input}
-              placeholder="First Name"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-            />
+  type="email"
+  style={styles.input}
+  placeholder="Email address"
+  value={email}
+  onChange={(e) => setEmail(e.target.value)}
+  required
+/>
 
             <input
-              style={styles.input}
-              placeholder="Last Name"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-            />
-
-            <input
-              style={styles.input}
-              placeholder="Email address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-
-            <input
-              style={styles.input}
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+  type="password"
+  style={styles.input}
+  placeholder="Password"
+  value={password}
+  minLength={6}
+  required
+  onChange={(e) => setPassword(e.target.value)}
+/>
 
             {/* TERMS */}
             <label style={styles.checkbox}>
@@ -161,9 +167,24 @@ export default function Signup() {
               </span>
             </label>
 
-            <button style={styles.button} disabled={loading}>
+ <button style={styles.button} disabled={loading}>
               {loading ? "Creating account..." : "Sign Up"}
             </button>
+
+            <div style={styles.divider}>
+  <span style={styles.line}></span>
+  <span>OR</span>
+  <span style={styles.line}></span>
+</div>
+
+          <button
+  type="button"
+  style={styles.googleButton}
+  onClick={handleGoogleSignup}
+>
+  Continue with Google
+</button>
+
           </form>
 
           <div style={styles.signup}>
@@ -213,6 +234,28 @@ export default function Signup() {
 
 /* STYLES */
 const styles = {
+
+  googleButton: {
+  padding: 12,
+  borderRadius: 10,
+  border: "1px solid #ddd",
+  background: "#475c6c",
+  cursor: "pointer",
+  fontWeight: 600,
+},
+
+divider: {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  margin: "5px 0",
+},
+
+line: {
+  flex: 1,
+  height: 1,
+  background: "#ddd",
+},
   wrapper: {
     display: "flex",
     minHeight: "100vh",

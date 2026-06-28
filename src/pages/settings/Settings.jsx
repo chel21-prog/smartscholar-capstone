@@ -55,7 +55,7 @@ const [showConfirm, setShowConfirm] = useState(false);
   // LOGOUT (ALL ROLES)
   const logout = async () => {
     await supabase.auth.signOut();
-    window.location.href = "/login";
+     navigate("/login");
   };
 
   // CHANGE PASSWORD (ALL ROLES)
