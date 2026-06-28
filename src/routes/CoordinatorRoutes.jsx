@@ -9,7 +9,6 @@ import Students from "@/pages/coordinator/Students";
 import CoordinatorApplications from "@/pages/coordinator/CoordinatorApplications";
 import Requirements from "@/pages/coordinator/Requirements";
 import Settings from "@/pages/settings/Settings";
-import ReportBuilder from "@/pages/coordinator/ReportBuilder";
 export default function CoordinatorRoutes() {
   return (
     <Routes>
@@ -23,7 +22,6 @@ export default function CoordinatorRoutes() {
   element={<CoordinatorApplications />}
 />
         <Route path="requirements" element={<Requirements />} />
-        <Route path="/ReportBuilder" element={<ReportBuilder />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>

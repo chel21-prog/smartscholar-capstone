@@ -34,11 +34,19 @@ export default function Requirements() {
   const addApp = async () => {
     if (!appName.trim()) return;
 
-    await supabase.from("application_requirements").insert({
-      requirement_name: appName,
-      requirement_type: appType,
-      description: appDesc || null,
-    });
+    const { error } = await supabase
+  .from("application_requirements")
+  .insert({
+    requirement_name: appName,
+    requirement_type: appType,
+    description: appDesc || null,
+  });
+
+if (error) {
+  console.log(error);
+  alert(error.message);
+  return;
+}
 
     setAppName("");
     setAppDesc("");
@@ -48,24 +56,41 @@ export default function Requirements() {
   const addElig = async () => {
     if (!eligName.trim()) return;
 
-    await supabase.from("eligibility_requirements").insert({
-      requirement_name: eligName,
-      requirement_type: eligType,
-      description: eligDesc || null,
-    });
+    const { error } = await supabase
+  .from("eligibility_requirements")
+  .insert({
+    requirement_name: eligName,
+    requirement_type: eligType,
+    description: eligDesc || null,
+  });
+
+if (error) {
+  console.log(error);
+  alert(error.message);
+  return;
+}
 
     setEligName("");
     setEligDesc("");
     load();
   };
 
+  
+
   return (
     <div style={page}>
-      <h1 style={title}> Requirement Library</h1>
+    <div style={header}>
+  <div>
+    <h1 style={title}>Requirement Library</h1>
+    <p style={subtitle}>
+      Manage application and eligibility requirements used across scholarships.
+    </p>
+  </div>
+</div>
 
       <div style={grid}>
         {/* APPLICATION */}
-        <div style={box}>
+        <div style={card}>
           <h2 style={h2}> Application Requirements</h2>
 
           <input
@@ -76,41 +101,117 @@ export default function Requirements() {
           />
 
           <div style={row}>
-            <label style={label}>
-              <input
-                type="checkbox"
-                checked={appType === "Document"}
-                onChange={() => setAppType("Document")}
-              />
-              Document
-            </label>
+            <button
+    type="button"
+    onClick={()=>setAppType("Document")}
+    style={{
+        padding:"8px 14px",
+        borderRadius:999,
+        border:
+            appType==="Document"
+            ? "2px solid #475c6c"
+            : "1px solid #ddd",
 
-            <label style={label}>
-            <input
-                type="checkbox"
-                checked={appType === "Grade"}
-                onChange={() => setAppType("Grade")}
-              />
-              Grade
-            </label>
+        background:
+            appType==="Document"
+            ? "#475c6c"
+            : "#fff",
 
-            <label style={label}>
-              <input
-                type="checkbox"
-                checked={appType === "Income"}
-                onChange={() => setAppType("Income")}
-              />
-              Income
-            </label>
+        color:
+            appType==="Document"
+            ? "#fff"
+            : "#475c6c",
 
-            <label style={label}>
-              <input
-                type="checkbox"
-                checked={appType === "Other"}
-                onChange={() => setAppType("Other")}
-              />
-              Other
-            </label>
+        cursor:"pointer",
+        fontWeight:600,
+    }}
+>
+Document
+</button>
+
+            <button
+    type="button"
+    onClick={()=>setAppType("Grade")}
+    style={{
+        padding:"8px 14px",
+        borderRadius:999,
+        border:
+            appType==="Grade"
+            ? "2px solid #475c6c"
+            : "1px solid #ddd",
+
+        background:
+            appType==="Grade"
+            ? "#475c6c"
+            : "#fff",
+
+        color:
+            appType==="Grade"
+            ? "#fff"
+            : "#475c6c",
+
+        cursor:"pointer",
+        fontWeight:600,
+    }}
+>
+Grade
+</button>
+
+            <button
+    type="button"
+    onClick={()=>setAppType("Income")}
+    style={{
+        padding:"8px 14px",
+        borderRadius:999,
+        border:
+            appType==="Income"
+            ? "2px solid #475c6c"
+            : "1px solid #ddd",
+
+        background:
+            appType==="Income"
+            ? "#475c6c"
+            : "#fff",
+
+        color:
+            appType==="Income"
+            ? "#fff"
+            : "#475c6c",
+
+        cursor:"pointer",
+        fontWeight:600,
+    }}
+>
+Income
+</button>
+
+            <button
+    type="button"
+    onClick={()=>setAppType("Other")}
+    style={{
+        padding:"8px 14px",
+        borderRadius:999,
+        border:
+            appType==="Other"
+            ? "2px solid #475c6c"
+            : "1px solid #ddd",
+
+        background:
+            appType==="Other"
+            ? "#475c6c"
+            : "#fff",
+
+        color:
+            appType==="Other"
+            ? "#fff"
+            : "#475c6c",
+
+        cursor:"pointer",
+        fontWeight:600,
+    }}
+>
+Other
+</button>
           </div>
 
           <textarea
@@ -123,24 +224,70 @@ export default function Requirements() {
           <button style={button} onClick={addApp}>
             Add Requirement
           </button>
+          <hr
+    style={{
+        border:"none",
+        borderTop:"1px solid #ececec",
+        margin:"8px 0 4px",
+    }}
+/>
 
-          <div>
-            {[...appReq]
+<h3
+    style={{
+        margin:0,
+        color:"#475c6c",
+    }}
+>
+Saved Requirements
+</h3>
+
+          <div style={requirementList}>
+  {[...appReq]
               .sort((a, b) =>
                 a.requirement_name.localeCompare(b.requirement_name)
               )
                .map((r) => (
-                <div key={r.application_requirement_id} style={item}>
-                  <b>{r.requirement_name}</b>
-              </div>
+                <div
+    key={r.application_requirement_id}
+    style={requirementCard}
+>
+
+    <div
+        style={{
+            display:"flex",
+            justifyContent:"space-between",
+            alignItems:"center",
+        }}
+    >
+        <b>{r.requirement_name}</b>
+
+        <span style={badge}>
+            {r.requirement_type}
+        </span>
+    </div>
+
+    {r.description && (
+        <p
+            style={{
+                marginTop:8,
+                color:"#8a8583",
+                fontSize:13,
+                lineHeight:1.5,
+            }}
+        >
+            {r.description}
+        </p>
+    )}
+
+</div>
             ))}
          </div>
         </div>
 
         {/* ELIGIBILITY */}
-        <div style={box}>
+        <div style={card}>
           <h2 style={h2}> Eligibility Requirements</h2>
-
+          
           <input
             style={input}
             value={eligName}
@@ -149,23 +296,61 @@ export default function Requirements() {
           />
 
           <div style={row}>
-            <label style={label}>
-              <input
-                type="checkbox"
-                checked={eligType === "Status"}
-                onChange={() => setEligType("Status")}
-              />
-              Status
-            </label>
+            <button
+    type="button"
+    onClick={()=> setEligType("Status")}
+    style={{
+        padding:"8px 14px",
+        borderRadius:999,
+        border:
+            eligType==="Status"
+            ? "2px solid #475c6c"
+            : "1px solid #ddd",
 
-            <label style={label}>
-              <input
-                type="checkbox"
-                checked={eligType === "Other"}
-                onChange={() => setEligType("Other")}
-              />
-              Other
-            </label>
+        background:
+            eligType==="Status"
+            ? "#475c6c"
+            : "#fff",
+
+        color:
+            eligType==="Status"
+            ? "#fff"
+            : "#475c6c",
+
+        cursor:"pointer",
+        fontWeight:600,
+    }}
+>
+Status
+</button>
+
+            <button
+    type="button"
+    onClick={()=> setEligType("Other")}
+    style={{
+        padding:"8px 14px",
+        borderRadius:999,
+        border:
+            eligType==="Other"
+            ? "2px solid #475c6c"
+            : "1px solid #ddd",
+
+        background:
+            eligType==="Other"
+            ? "#475c6c"
+            : "#fff",
+
+        color:
+            eligType==="Other"
+            ? "#fff"
+            : "#475c6c",
+
+        cursor:"pointer",
+        fontWeight:600,
+    }}
+>
+Other
+</button>
           </div>
 
           <textarea
@@ -178,16 +363,62 @@ export default function Requirements() {
           <button style={button} onClick={addElig}>
             Add Requirement
           </button>
+          <hr
+    style={{
+        border:"none",
+        borderTop:"1px solid #ececec",
+        margin:"8px 0 4px",
+    }}
+/>
 
-          <div>
-            {[...eligReq]
+<h3
+    style={{
+        margin:0,
+        color:"#475c6c",
+    }}
+>
+Saved Requirements
+</h3>
+
+          <div style={requirementList}>
+  {[...eligReq]
               .sort((a, b) =>
                 a.requirement_name.localeCompare(b.requirement_name)
               )
                .map((r) => (
-                <div key={r.eligibility_requirement_id} style={item}>
-                  <b>{r.requirement_name}</b>
-              </div>
+                <div
+    key={r.eligibility_requirement_id}
+    style={requirementCard}
+>
+
+    <div
+        style={{
+            display:"flex",
+            justifyContent:"space-between",
+            alignItems:"center",
+        }}
+    >
+        <b>{r.requirement_name}</b>
+
+        <span style={badge}>
+            {r.requirement_type}
+        </span>
+    </div>
+
+    {r.description && (
+        <p
+            style={{
+                marginTop:8,
+                color:"#8a8583",
+                fontSize:13,
+                lineHeight:1.5,
+            }}
+        >
+            {r.description}
+        </p>
+    )}
+
+</div>
             ))}
          </div>
         </div>
@@ -221,35 +452,39 @@ const h2 = {
 
 const grid = {
   display: "grid",
-  gridTemplateColumns: "1fr 1fr",
+  gridTemplateColumns:
+"repeat(auto-fit,minmax(420px,1fr))",
   gap: "20px",
+  scrollbarWidth: "none",
 };
 
-const box = {
-  background: "white",
-  padding: "20px",
-  borderRadius: "12px",
-  boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+const card = {
+  background:"#fff",
+  borderRadius:18,
+  padding:24,
+  boxShadow:"0 10px 25px rgba(0,0,0,.06)",
+  display:"flex",
+  flexDirection:"column",
+  gap:18,
+  minHeight:720,
 };
 
 const input = {
   width: "100%",
-  padding: "10px",
-  marginBottom: "10px",
-  border: "1px solid #ddd",
-  borderRadius: "6px",
-  fontSize: "14px",
+  padding: "12px 14px",
+  border: "1px solid #d9d9d9",
+  borderRadius: 8,
+  background: "#fff",
+  color: "#475c6c",
+  outline: "none",
+  fontSize: 14,
+  boxSizing: "border-box",
 };
 
 const textarea = {
-  width: "100%",
-  padding: "10px",
-  marginBottom: "10px",
-  border: "1px solid #ddd",
-  borderRadius: "6px",
-  fontSize: "14px",
-  minHeight: "70px",
-  resize: "none",
+  ...input,
+  minHeight: 90,
+  resize: "vertical",
 };
 
 const row = {
@@ -267,26 +502,55 @@ const label = {
 };
 
 const button = {
-  width: "100%",
-  padding: "10px",
-  background: "#2563eb",
-  color: "white",
-  border: "none",
-  borderRadius: "6px",
-  cursor: "pointer",
-  fontWeight: "600",
+  padding:"12px",
+  border:"none",
+  borderRadius:10,
+  background:"#475c6c",
+  color:"#fff",
+  fontWeight:600,
+  cursor:"pointer",
+  transition:"all .2s",
+  marginBottom:10,
 };
 
-const list = {
-  marginTop: "15px",
+const requirementCard = {
+  padding: 16,
+  border: "1px solid #ececec",
+  borderRadius: 10,
+  background: "#fafafa",
+  marginBottom: 10,
+};
+const badge = {
+  display: "inline-block",
+  padding: "4px 10px",
+  borderRadius: 999,
+  background: "#eed7a1",
+  color: "#475c6c",
+  fontWeight: 600,
+  fontSize: 12,
 };
 
-const item = {
-  padding: "10px",
-  borderBottom: "1px solid #eee",
+const header = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 24,
 };
 
-const meta = {
-  fontSize: "12px",
-  color: "#6b7280",
+const subtitle = {
+  marginTop: 6,
+  color: "#8a8583",
+  fontSize: 14,
+};
+
+const requirementList = {
+  marginTop: 10,
+  maxHeight: 420,
+  overflowY: "auto",
+  scrollbarWidth: "none",
+  msOverflowStyle: "none",
+};
+
+requirementList["&::-webkit-scrollbar"] = {
+  display: "none",
 };
