@@ -4,14 +4,8 @@ import { useNavigate } from "react-router-dom";
 export default function Settings() {
   const [email, setEmail] = useState("");
 const navigate = useNavigate();
-const [currentPassword, setCurrentPassword] = useState("");
-
 const [newPassword, setNewPassword] = useState("");
-
 const [confirmPassword, setConfirmPassword] = useState("");
-
-const [showCurrent, setShowCurrent] = useState(false);
-
 const [showNew, setShowNew] = useState(false);
 const [saving, setSaving] = useState(false);
 const [showConfirm, setShowConfirm] = useState(false);
@@ -63,62 +57,49 @@ const [showConfirm, setShowConfirm] = useState(false);
   setSaving(true);
 
   try {
-
-    // Check if every field is filled
+    // Validate fields
     if (
-      !currentPassword.trim() ||
-      !newPassword.trim() ||
-      !confirmPassword.trim()
-    ) {
-      alert("Please complete all password fields.");
-      return;
-    }
+  !newPassword.trim() ||
+  !confirmPassword.trim()
+) {
+  alert("Please complete all password fields.");
+  return;
+}
 
-    // Check if passwords match
     if (newPassword !== confirmPassword) {
-      alert("New password and Confirm password do not match.");
+      alert("New password and Confirm Password do not match.");
       return;
     }
 
-    // New password must not equal current password
-    if (currentPassword === newPassword) {
-      alert("Your new password must be different from your current password.");
-      return;
-    }
-
-    // Password complexity
     const passwordRegex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
 
     if (!passwordRegex.test(newPassword)) {
       alert(
-  "Password must contain:\n\n" +
-  "• At least 6 characters\n" +
-  "• One uppercase letter\n" +
-  "• One lowercase letter\n" +
-  "• One number"
-);
+        "Password must contain:\n\n" +
+          "• At least 6 characters\n" +
+          "• One uppercase letter\n" +
+          "• One lowercase letter\n" +
+          "• One number"
+      );
       return;
     }
 
-    
+   
+    const { error } = await supabase.auth.updateUser({
+  password: newPassword,
+});
 
-    // Update password
-    const { error } =
-      await supabase.auth.updateUser({
-        password: newPassword,
-      });
+if (error) {
+  alert(error.message);
+  return;
+}
 
-    if (error) {
-      alert(error.message);
-      return;
-    }
 
-    alert("Password changed successfully!");
+alert("Password changed successfully!");
 
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+setNewPassword("");
+setConfirmPassword("");
 
   } catch (err) {
     console.error(err);
@@ -132,12 +113,10 @@ const passwordValid =
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/.test(newPassword);
 
 const formValid =
-    currentPassword &&
     newPassword &&
     confirmPassword &&
     passwordValid &&
-    newPassword === confirmPassword &&
-    newPassword !== currentPassword;
+    newPassword === confirmPassword;
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -169,37 +148,6 @@ const formValid =
       {/* SECURITY */}
       <div style={styles.card}>
         <h3>Security</h3>
-
-        <div style={styles.field}>
-    <label style={styles.label}>
-        Current Password
-    </label>
-
-    <div style={styles.passwordRow}>
-
-<input
-    type={showCurrent ? "text" : "password"}
-     placeholder="Enter your current password"
-    value={currentPassword}
-    onChange={(e)=>setCurrentPassword(e.target.value)}
-    disabled={saving}
-    style={styles.input}
-/>
-
-<button
-    type="button"
-    disabled={saving}
-    style={{
-        ...styles.eyeButton,
-        opacity: saving ? .6 : 1,
-    }}
-    onClick={() => setShowCurrent(!showCurrent)}
->
-    {showCurrent ? "Hide" : "Show"}
-</button>
-
-</div>
-</div>
 
 <div style={styles.field}>
     <label style={styles.label}>
