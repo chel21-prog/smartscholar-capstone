@@ -4,7 +4,11 @@ import { supabase } from "@/lib/supabase";
 export default function Grantees() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  const [search,setSearch]=useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+const [scholarshipFilter, setScholarshipFilter] = useState("All");
+const [semesterFilter, setSemesterFilter] = useState("All");
+const [yearFilter, setYearFilter] = useState("All");
   useEffect(() => {
     load();
   }, []);
@@ -93,9 +97,168 @@ export default function Grantees() {
 
   return acc;
 }, {});
+
+const scholarshipOptions = [
+  "All",
+  ...new Set(rows.map(r => r.scholarship_name))
+];
+
+const yearOptions = [
+  "All",
+  ...new Set(rows.map(r => r.academic_year))
+];
+
+const semesterOptions = [
+  "All",
+  ...new Set(rows.map(r => r.semester))
+];
+
+const statusOptions = [
+  "All",
+  ...new Set(rows.map(r => r.status))
+];
+
+const filtered = Object.values(grouped)
+  .map(student => ({
+    ...student,
+    scholarships: student.scholarships.filter(s => {
+
+      const keyword = search.toLowerCase();
+
+      const matchesSearch =
+        student.student_name.toLowerCase().includes(keyword) ||
+        student.school_id.toLowerCase().includes(keyword) ||
+        s.scholarship_name.toLowerCase().includes(keyword) ||
+        s.status.toLowerCase().includes(keyword) ||
+        s.academic_year.toLowerCase().includes(keyword) ||
+        s.semester.toLowerCase().includes(keyword) ||
+        (s.date_awarded &&
+          new Date(s.date_awarded)
+            .toLocaleDateString()
+            .toLowerCase()
+            .includes(keyword));
+
+      const matchesStatus =
+        statusFilter === "All" ||
+        s.status === statusFilter;
+
+      const matchesScholarship =
+        scholarshipFilter === "All" ||
+        s.scholarship_name === scholarshipFilter;
+
+      const matchesSemester =
+        semesterFilter === "All" ||
+        s.semester === semesterFilter;
+
+      const matchesYear =
+        yearFilter === "All" ||
+        s.academic_year === yearFilter;
+
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesScholarship &&
+        matchesSemester &&
+        matchesYear
+      );
+
+    })
+  }))
+  .filter(student => student.scholarships.length > 0);
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>Grantees</h1>
+      <div style={styles.header}>
+    <div>
+        <h1 style={styles.title}>
+            Scholarship Grantees
+        </h1>
+
+        <p style={styles.subtitle}>
+            View all approved scholarship recipients and their submitted requirements.
+        </p>
+    </div>
+</div>
+    
+    <div style={styles.statsRow}>
+  <div style={styles.statCard}>
+    <div style={styles.statNumber}>{rows.length}</div>
+    <div style={styles.statLabel}>Scholarship Awards</div>
+  </div>
+
+  <div style={styles.statCard}>
+    <div style={styles.statNumber}>
+      {Object.keys(grouped).length}
+    </div>
+    <div style={styles.statLabel}>Total Grantees</div>
+  </div>
+
+  <div style={styles.statCard}>
+    <div style={styles.statNumber}>
+      {rows.filter((r) => r.status === "Active").length}
+    </div>
+    <div style={styles.statLabel}>Active Grantees</div>
+  </div>
+</div>
+
+<div style={styles.toolbar}>
+
+    <input
+        type="text"
+        placeholder="Search grantees..."
+        value={search}
+        onChange={(e)=>setSearch(e.target.value)}
+        style={styles.search}
+    />
+
+    <select
+        value={statusFilter}
+        onChange={(e)=>setStatusFilter(e.target.value)}
+        style={styles.select}
+    >
+        {statusOptions.map(option=>(
+            <option key={option}>
+                {option}
+            </option>
+        ))}
+    </select>
+
+    <select
+        value={scholarshipFilter}
+        onChange={(e)=>setScholarshipFilter(e.target.value)}
+        style={styles.select}
+    >
+        {scholarshipOptions.map(option=>(
+            <option key={option}>
+                {option}
+            </option>
+        ))}
+    </select>
+
+    <select
+        value={yearFilter}
+        onChange={(e)=>setYearFilter(e.target.value)}
+        style={styles.select}
+    >
+        {yearOptions.map(option=>(
+            <option key={option}>
+                {option}
+            </option>
+        ))}
+    </select>
+
+    <select
+        value={semesterFilter}
+        onChange={(e)=>setSemesterFilter(e.target.value)}
+        style={styles.select}
+    >
+        {semesterOptions.map(option=>(
+            <option key={option}>
+                {option}
+            </option>
+        ))}
+    </select>
+
+</div>
 
       <div style={styles.tableContainer}>
         <table style={styles.table}>
@@ -113,43 +276,61 @@ export default function Grantees() {
           </thead>
 
           <tbody>
-  {Object.values(grouped).map((student) => (
-  <React.Fragment key={student.student_id}>
+ {filtered.map((student) => (
+  <React.Fragment key={student.school_id}>
       {student.scholarships.map((s, index) => (
         <tr key={s.grantee_id}>
 
           {/* ✅ MERGED STUDENT CELL */}
           {index === 0 && (
             <td
-              rowSpan={student.scholarships.length}
-              style={{ verticalAlign: "middle", fontWeight: "bold" }}
-            >
+  rowSpan={student.scholarships.length}
+  style={{
+    ...styles.td,
+    verticalAlign: "middle",
+    fontWeight: 600,
+  }}
+>
               {student.school_id}
             </td>
           )}
           {index === 0 && (
-            <td
+            <td style={styles.td}
               rowSpan={student.scholarships.length}
               style={{ verticalAlign: "middle", fontWeight: "bold" }}
             >
               {student.student_name}
             </td>
           )}
-          <td>{s.scholarship_name}</td>
-          <td>{s.academic_year}</td>
-          <td>{s.semester}</td>
+          <td style={styles.td}>{s.scholarship_name}</td>
+          <td style={styles.td}>{s.academic_year}</td>
+          <td style={styles.td}>{s.semester}</td>
 
-          <td>
+          <td style={styles.td}>
             {s.date_awarded
               ? new Date(s.date_awarded).toLocaleDateString()
               : "Not set"}
           </td>
 
-          <td>
-            <span style={styles.badge}>{s.status}</span>
+          <td style={styles.td}>
+            <span
+  style={{
+    ...styles.badge,
+    background:
+      s.status === "Active"
+        ? "#dcfce7"
+        : "#fef3c7",
+    color:
+      s.status === "Active"
+        ? "#166534"
+        : "#92400e",
+  }}
+>
+  {s.status}
+</span>
           </td>
 
-          <td>
+          <td style={styles.td}>
             {!s.documents || s.documents.length === 0 ? (
               <span style={{ color: "#999" }}>No files uploaded</span>
             ) : (
@@ -159,7 +340,7 @@ export default function Grantees() {
                     href={d.file_url}
                     target="_blank"
                     rel="noreferrer"
-                    style={styles.link}
+                    style={styles.documentButton}
                   >
                     {d.requirement_name || "View Document"}
                   </a>
@@ -181,38 +362,51 @@ export default function Grantees() {
 
 /* STYLES */
 const styles = {
-  page: {
-    padding: 30,
-    background: "#f8fafc",
-    minHeight: "100vh",
-  },
+  page:{
+    minHeight:"100vh",
+    padding:"40px",
+    background:"#f4f6f8",
+    fontFamily:"Inter, sans-serif",
+},
 
-  title: {
-    fontSize: 28,
-    fontWeight: 700,
-    marginBottom: 20,
-  },
+  title:{
+    margin:0,
+    fontSize:30,
+    color:"#475c6c",
+    fontWeight:700,
+},
 
-  tableContainer: {
-    background: "#fff",
-    borderRadius: 10,
-    overflowX: "auto",
-    boxShadow: "0 4px 15px rgba(0,0,0,0.08)",
-  },
+  tableContainer:{
+    background:"#fff",
+    borderRadius:16,
+    overflow:"hidden",
+    boxShadow:"0 10px 24px rgba(0,0,0,.06)",
+    border:"1px solid #e5e7eb",
+},
 
   table: {
     width: "100%",
     minWidth: 900,
     borderCollapse: "collapse",
   },
-
-  th: {
-    background: "#111",
-    color: "#fff",
-    padding: 12,
-    textAlign: "left",
-    fontSize: 13,
-  },
+documentButton:{
+    display:"inline-block",
+    padding:"8px 12px",
+    background:"#475c6c",
+    color:"#fff",
+    borderRadius:8,
+    textDecoration:"none",
+    fontSize:12,
+    marginBottom:6,
+},
+  th:{
+    background:"#475c6c",
+    color:"#fff",
+    padding:"14px",
+    textAlign:"left",
+    fontWeight:600,
+    fontSize:14,
+},
 
   td: {
     padding: 12,
@@ -236,4 +430,69 @@ const styles = {
     fontSize: 12,
     textDecoration: "underline",
   },
+
+  header:{
+    display:"flex",
+    justifyContent:"space-between",
+    alignItems:"center",
+    marginBottom:30,
+},
+
+subtitle:{
+    marginTop:6,
+    color:"#8a8583",
+    fontSize:14,
+},
+
+statsRow:{
+    display:"grid",
+    gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",
+    gap:20,
+    marginBottom:24,
+},
+
+statCard:{
+    background:"#fff",
+    padding:20,
+    borderRadius:16,
+    boxShadow:"0 10px 24px rgba(0,0,0,.06)",
+},
+
+statNumber:{
+    fontSize:28,
+    fontWeight:700,
+    color:"#475c6c",
+},
+
+statLabel:{
+    marginTop:8,
+    color:"#8a8583",
+},
+
+toolbar:{
+    display:"flex",
+    flexWrap:"wrap",
+    gap:12,
+    alignItems:"center",
+    marginBottom:24,
+},
+
+search:{
+    width:350,
+    padding:"12px 15px",
+    borderRadius:10,
+    border:"1px solid #d1d5db",
+    outline:"none",
+    fontSize:14,
+},
+select:{
+    padding:"12px 14px",
+    border:"1px solid #d1d5db",
+    borderRadius:10,
+    background:"#fff",
+    color:"#475c6c",
+    fontSize:14,
+    outline:"none",
+    minWidth:170,
+},
 };
