@@ -1,25 +1,56 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-
+import { useNavigate } from "react-router-dom";
 export default function Settings() {
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
+const navigate = useNavigate();
+const [currentPassword, setCurrentPassword] = useState("");
+
+const [newPassword, setNewPassword] = useState("");
+
+const [confirmPassword, setConfirmPassword] = useState("");
+
+const [showCurrent, setShowCurrent] = useState(false);
+
+const [showNew, setShowNew] = useState(false);
+const [saving, setSaving] = useState(false);
+const [showConfirm, setShowConfirm] = useState(false);
   const [role, setRole] = useState(null);
 
   useEffect(() => {
     getRole();
-  }, []);
+
+    const {
+        data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+        if (event === "SIGNED_OUT") {
+            window.location.href = "/login";
+        }
+    });
+
+    return () => subscription.unsubscribe();
+}, []);
 
   const getRole = async () => {
-    const { data: userData } = await supabase.auth.getUser();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+        navigate("/login");
+        return;
+    }
+
+    setEmail(user.email);
 
     const { data } = await supabase
-      .from("users")
-      .select("role")
-      .eq("auth_id", userData.user.id)
-      .single();
+        .from("users")
+        .select("role")
+        .eq("auth_id", user.id)
+        .single();
 
     setRole(data?.role);
-  };
+};
 
   // LOGOUT (ALL ROLES)
   const logout = async () => {
@@ -29,79 +60,401 @@ export default function Settings() {
 
   // CHANGE PASSWORD (ALL ROLES)
   const changePassword = async () => {
-    if (!password) return;
+  setSaving(true);
 
-    const { error } = await supabase.auth.updateUser({
-      password: password,
-    });
+  try {
+
+    // Check if every field is filled
+    if (
+      !currentPassword.trim() ||
+      !newPassword.trim() ||
+      !confirmPassword.trim()
+    ) {
+      alert("Please complete all password fields.");
+      return;
+    }
+
+    // Check if passwords match
+    if (newPassword !== confirmPassword) {
+      alert("New password and Confirm password do not match.");
+      return;
+    }
+
+    // New password must not equal current password
+    if (currentPassword === newPassword) {
+      alert("Your new password must be different from your current password.");
+      return;
+    }
+
+    // Password complexity
+    const passwordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
+
+    if (!passwordRegex.test(newPassword)) {
+      alert(
+  "Password must contain:\n\n" +
+  "• At least 6 characters\n" +
+  "• One uppercase letter\n" +
+  "• One lowercase letter\n" +
+  "• One number"
+);
+      return;
+    }
+
+    
+
+    // Update password
+    const { error } =
+      await supabase.auth.updateUser({
+        password: newPassword,
+      });
 
     if (error) {
       alert(error.message);
-    } else {
-      alert("Password updated successfully");
-      setPassword("");
+      return;
     }
-  };
 
+    alert("Password changed successfully!");
+
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+
+  } catch (err) {
+    console.error(err);
+    alert("Something went wrong.");
+  } finally {
+    setSaving(false);
+  }
+};
+
+const passwordValid =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/.test(newPassword);
+
+const formValid =
+    currentPassword &&
+    newPassword &&
+    confirmPassword &&
+    passwordValid &&
+    newPassword === confirmPassword &&
+    newPassword !== currentPassword;
   return (
     <div style={styles.container}>
-      <h1>Settings</h1>
+      <div style={styles.header}>
+  <div>
+    <h1 style={styles.title}>Settings</h1>
+    <p style={styles.subtitle}>
+      Manage your account, security, and session preferences.
+    </p>
+  </div>
+</div>
 
-      {/* ROLE DISPLAY (OPTIONAL) */}
-      <p style={styles.role}>
-        Current Role: <b>{role}</b>
-      </p>
+     <div style={styles.content}>
+       <div style={styles.card}>
+  <h2 style={styles.cardTitle}>Account Information</h2>
 
+<div style={styles.infoItem}>
+    <span style={styles.infoLabel}>Email</span>
+    <span style={styles.infoValue}>{email}</span>
+</div>
+
+<div style={styles.infoItem}>
+    <span style={styles.infoLabel}>Role</span>
+
+    <span style={styles.roleBadge}>
+        {role}
+    </span>
+</div>
+      </div>
       {/* SECURITY */}
       <div style={styles.card}>
         <h3>Security</h3>
 
-        <input
-          type="password"
-          placeholder="New password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={styles.input}
-        />
+        <div style={styles.field}>
+    <label style={styles.label}>
+        Current Password
+    </label>
 
-        <button onClick={changePassword}>
-          Change Password
-        </button>
+    <div style={styles.passwordRow}>
+
+<input
+    type={showCurrent ? "text" : "password"}
+     placeholder="Enter your current password"
+    value={currentPassword}
+    onChange={(e)=>setCurrentPassword(e.target.value)}
+    disabled={saving}
+    style={styles.input}
+/>
+
+<button
+    type="button"
+    disabled={saving}
+    style={{
+        ...styles.eyeButton,
+        opacity: saving ? .6 : 1,
+    }}
+    onClick={() => setShowCurrent(!showCurrent)}
+>
+    {showCurrent ? "Hide" : "Show"}
+</button>
+
+</div>
+</div>
+
+<div style={styles.field}>
+    <label style={styles.label}>
+        New Password
+    </label>
+
+    <div style={styles.passwordRow}>
+<input
+    type={showNew ? "text" : "password"}
+        placeholder="Enter a new password"
+    value={newPassword}
+    onChange={(e) => setNewPassword(e.target.value)}
+    disabled={saving}
+    style={styles.input}
+/>
+
+<button
+    type="button"
+    disabled={saving}
+    style={{
+        ...styles.eyeButton,
+        opacity: saving ? .6 : 1,
+    }}
+    onClick={() => setShowNew(!showNew)}
+>
+    {showNew ? "Hide" : "Show"}
+</button>
+
+</div>
+</div>
+
+<div style={styles.field}>
+    <label style={styles.label}>
+        Confirm Password
+    </label>
+    <div style={styles.passwordRow}>
+<input
+    type={showConfirm ? "text" : "password"}
+    placeholder="Re-enter your new password"
+    value={confirmPassword}
+    onChange={(e)=>setConfirmPassword(e.target.value)}
+    disabled={saving}
+    style={styles.input}
+/>
+
+<button
+    type="button"
+    disabled={saving}
+    style={{
+        ...styles.eyeButton,
+        opacity: saving ? .6 : 1,
+    }}
+    onClick={() => setShowConfirm(!showConfirm)}
+>
+    {showConfirm ? "Hide" : "Show"}
+</button>
+
+</div>
+<div style={styles.tipBox}>
+    Password must contain:
+
+    <ul style={{ marginTop: 10 }}>
+        <li>At least 6 characters</li>
+        <li>One uppercase letter</li>
+        <li>One lowercase letter</li>
+        <li>One number</li>
+    </ul>
+</div>
+</div>
+    <button
+    onClick={changePassword}
+    disabled={saving || !formValid}
+    style={{
+        ...styles.primaryButton,
+        opacity: saving || !formValid ? 0.6 : 1,
+        cursor: saving || !formValid ? "not-allowed" : "pointer",
+    }}
+>
+    {saving ? "Updating Password..." : "Change Password"}
+</button>
       </div>
 
       {/* ACCOUNT */}
       <div style={styles.card}>
-        <h3>Account</h3>
+     <h2 style={styles.cardTitle}>Session</h2>
 
-        <button onClick={logout}>
-          Logout
-        </button>
+<p style={styles.logoutText}>
+Session Management
+
+Sign out of your current session. You'll need to log in again to access your account.
+</p>
+
+<button
+style={styles.logoutButton}
+onClick={logout}
+>
+Logout
+</button>
+      </div>
       </div>
     </div>
   );
 }
 
 const styles = {
-  container: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "20px",
-  },
+  container:{
+padding:"20px",
+background:"#f4f6f8",
+minHeight:"100vh",
+},
+tipBox:{
+    background:"#fff8e8",
+    border:"1px solid #eed7a1",
+    padding:15,
+    borderRadius:10,
+    color:"#8a8583",
+    fontSize:13,
+    marginBottom:20,
+},
+content:{
+display:"flex",
+flexDirection:"column",
+gap:"24px",
+maxWidth:"800px",
+},
+logoutText:{
+    color:"#8a8583",
+    marginBottom:20,
+},
+  card:{
+    background:"#fff",
+    padding:24,
+    borderRadius:16,
+    boxShadow:"0 10px 24px rgba(0,0,0,.06)",
+},
 
-  card: {
-    background: "white",
-    padding: "20px",
-    borderRadius: "10px",
-    maxWidth: "400px",
-  },
-
-  input: {
-    width: "100%",
-    padding: "10px",
-    marginBottom: "10px",
-  },
+  input:{
+    flex:1,
+    padding:"12px 14px",
+    border:"1px solid #d9d9d9",
+    borderRadius:8,
+    outline:"none",
+    fontSize:14,
+    background:"#fff",
+    color:"#475c6c",
+},
 
   role: {
     color: "#555",
   },
+  infoCard:{
+    background:"#fff",
+    padding:"24px",
+    borderRadius:16,
+    boxShadow:"0 10px 24px rgba(0,0,0,.06)",
+},
+passwordRow:{
+    display:"flex",
+    gap:10,
+    alignItems:"center",
+    marginBottom:15,
+},
+eyeButton:{
+    minWidth:70,
+    padding:"12px",
+    border:"1px solid #d8d8d8",
+    background:"#fff",
+    color:"#475c6c",
+    borderRadius:8,
+    cursor:"pointer",
+    fontWeight:600,
+},
+primaryButton:{
+    width:"100%",
+    padding:"14px",
+    background:"#475c6c",
+    color:"#fff",
+    border:"none",
+    borderRadius:10,
+    fontWeight:700,
+    fontSize:15,
+    cursor:"pointer",
+    transition:"0.2s",
+},
+
+cardTitle:{
+    marginTop:0,
+    marginBottom:20,
+    color:"#475c6c",
+},
+
+infoItem:{
+    display:"flex",
+    justifyContent:"space-between",
+    alignItems:"center",
+    padding:"14px 0",
+    borderBottom:"1px solid #eee",
+},
+
+infoLabel:{
+    color:"#8a8583",
+    fontWeight:600,
+},
+
+infoValue:{
+    color:"#475c6c",
+    fontWeight:600,
+},
+
+roleBadge:{
+    background:"#eed7a1",
+    color:"#475c6c",
+    padding:"6px 14px",
+    borderRadius:999,
+    fontWeight:600,
+},
+logoutButton:{
+    width:"100%",
+    padding:"12px",
+    background:"#dc2626",
+    color:"#fff",
+    border:"none",
+    borderRadius:10,
+    fontWeight:600,
+    cursor:"pointer",
+},
+field:{
+    display:"flex",
+    flexDirection:"column",
+    gap:8,
+    marginBottom:18,
+},
+
+label:{
+    color:"#475c6c",
+    fontWeight:600,
+    fontSize:14,
+},
+header: {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 30,
+},
+
+title: {
+  margin: 0,
+  fontSize: 30,
+  fontWeight: 700,
+  color: "#475c6c",
+},
+
+subtitle: {
+  marginTop: 6,
+  color: "#8a8583",
+  fontSize: 14,
+},
 };
